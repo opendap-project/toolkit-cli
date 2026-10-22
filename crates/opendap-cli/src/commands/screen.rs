@@ -1,27 +1,16 @@
 use std::path::PathBuf;
 
 use opendap_cli_kit::CliError;
-use opendap_model::Transport;
+use opendap_core::{Need, Outcome, resolve_target};
 use opendap_model::error as codes;
-use serde::Serialize;
+use opendap_transport_vm::LocalVms;
 
-use super::{Ctx, Doc, Need, emit_plan, resolve_target};
+use super::{Ctx, Doc, emit_plan};
 use crate::cli::ScreenCmd;
-use crate::virt::png_size;
-
-#[derive(Serialize)]
-struct Capture {
-    target: Transport,
-    path: String,
-    format: &'static str,
-    width: u32,
-    height: u32,
-    bytes: u64,
-}
 
 pub fn run(ctx: &Ctx, cmd: ScreenCmd) -> Result<u8, CliError> {
     let ScreenCmd::Capture { file } = cmd;
-    let (vm, target) = resolve_target(ctx, Need::Qmp)?;
+    let (vm, target) = resolve_target(&LocalVms, ctx.target.as_ref(), Need::Qmp)?;
     let cwd = std::env::current_dir().map_err(|e| {
         CliError::new(
             &codes::HOST_IO,
@@ -46,33 +35,10 @@ pub fn run(ctx: &Ctx, cmd: ScreenCmd) -> Result<u8, CliError> {
             format!("no such directory: {}", parent.display()),
         ));
     }
-    if ctx.dry_run {
-        return emit_plan(
-            ctx,
-            "opendap.screen_capture/v1",
-            vec![format!("QMP screendump of {target} to {}", path.display())],
-        );
-    }
-    vm.qmp(&["screenshot".into(), path.display().to_string()])?;
-    let bytes = std::fs::read(&path).map_err(|e| {
-        CliError::new(
-            &codes::HOST_IO,
-            format!("cannot read {}: {e}", path.display()),
-        )
-    })?;
-    let (width, height) = png_size(&bytes).ok_or_else(|| {
-        CliError::new(
-            &codes::TRANSPORT_QMP_FAILED,
-            format!("{} is not a PNG", path.display()),
-        )
-    })?;
-    let doc = Capture {
-        target,
-        path: path.display().to_string(),
-        format: "png",
-        width,
-        height,
-        bytes: bytes.len() as u64,
+    let path = path.display().to_string();
+    let doc = match opendap_core::screen::capture(&vm, target, &path, ctx.dry_run)? {
+        Outcome::Plan(plan) => return emit_plan(ctx, "opendap.screen_capture/v1", plan),
+        Outcome::Done(doc) => doc,
     };
     ctx.out.emit(
         &Doc {

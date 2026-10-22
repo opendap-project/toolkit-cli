@@ -1,0 +1,16 @@
+[package]
+name = "opendap-core"
+description = "Application core of the OpenDAP toolkit: use cases written against ports (traits) that adapter crates implement"
+license = "MPL-2.0"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+# The contract suites every adapter of a port runs in its tests.
+contract = []
+
+[dependencies]
+opendap-model.workspace = true
+serde_json.workspace = true

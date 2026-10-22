@@ -24,26 +24,29 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 The OpenDAP Project"
 SPDX-License-Identifier = "MIT"
 
+# Library crates others build on: MPL-2.0. The opendap binary keeps the default.
 [[annotations]]
-path = "crates/opendap-model/**"
+path = [
+    "crates/opendap-model/**",
+    "crates/opendap-core/**",
+    "crates/opendap-transport-vm/**",
+    "crates/opendap-transport-ssh/**",
+    "crates/opendap-host/**",
+    "crates/opendap-cli-kit/**",
+]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 The OpenDAP Project"
 SPDX-License-Identifier = "MPL-2.0"
 
 [[annotations]]
-path = "crates/opendap-cli-kit/**"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 The OpenDAP Project"
-SPDX-License-Identifier = "MPL-2.0"
-
-[[annotations]]
-path = "crates/opendap-model/**/*.md"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 The OpenDAP Project"
-SPDX-License-Identifier = "CC-BY-SA-4.0"
-
-[[annotations]]
-path = "crates/opendap-cli-kit/**/*.md"
+path = [
+    "crates/opendap-model/**/*.md",
+    "crates/opendap-core/**/*.md",
+    "crates/opendap-transport-vm/**/*.md",
+    "crates/opendap-transport-ssh/**/*.md",
+    "crates/opendap-host/**/*.md",
+    "crates/opendap-cli-kit/**/*.md",
+]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 The OpenDAP Project"
 SPDX-License-Identifier = "CC-BY-SA-4.0"

@@ -3,9 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
+use opendap_model::Error;
 use opendap_model::error as codes;
-
-use crate::error::CliError;
 
 /// Environment variable that points at an opendap-os checkout.
 pub const OS_DIR_VAR: &str = "OPENDAP_OS_DIR";
@@ -20,14 +19,14 @@ pub fn is_os_checkout(dir: &Path) -> bool {
 
 /// `$OPENDAP_OS_DIR` when set (it must be a checkout), otherwise walk up from
 /// `cwd` to the folder that contains `public/opendap-os`.
-pub fn find_os_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, CliError> {
+pub fn find_os_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, Error> {
     if let Some(v) = env_value.filter(|v| !v.is_empty()) {
         let p = PathBuf::from(v);
         let p = if p.is_relative() { cwd.join(p) } else { p };
         return if is_os_checkout(&p) {
             Ok(p.canonicalize().unwrap_or(p))
         } else {
-            Err(CliError::new(
+            Err(Error::new(
                 &codes::WORKSPACE_NOT_FOUND,
                 format!("{OS_DIR_VAR}={v} is not an opendap-os checkout (no build/dap-qemu.sh)"),
             )
@@ -42,7 +41,7 @@ pub fn find_os_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, 
             return Ok(candidate.canonicalize().unwrap_or(candidate));
         }
     }
-    Err(CliError::new(
+    Err(Error::new(
         &codes::WORKSPACE_NOT_FOUND,
         format!("no {OS_IN_WORKSPACE} found above {}", cwd.display()),
     )
@@ -50,9 +49,9 @@ pub fn find_os_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, 
 }
 
 /// Same as [`find_os_checkout`], from the process environment and directory.
-pub fn os_checkout() -> Result<PathBuf, CliError> {
+pub fn os_checkout() -> Result<PathBuf, Error> {
     let cwd = std::env::current_dir().map_err(|e| {
-        CliError::new(
+        Error::new(
             &codes::HOST_IO,
             format!("cannot read the current directory: {e}"),
         )

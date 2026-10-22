@@ -62,19 +62,32 @@ The image is built with `build/dap-image.sh qemu` in the opendap-os checkout. Wh
 
 ## Layout
 
-- `Cargo.toml`, `crates/` — the Rust workspace:
-  - `opendap-model` — shared types and schema IDs: devices, transports, target selectors, findings, error codes;
-  - `opendap-cli-kit` — output modes, the error envelope, exit codes, command metadata, agent detection, workspace discovery;
-  - `opendap-cli` — the `opendap` binary: command tree, command metadata (`src/meta.rs`) and the virtual T1 backend.
+- `Cargo.toml`, `crates/` — the Rust workspace, layered as the [Rust crate architecture](https://github.com/opendap-project/system/blob/main/docs/specs/rust-crate-architecture.md) sets out
 - `templates/` — project templates the CLI generates
 - `docs/` — requirements, the [CLI spec](docs/specs/opendap-cli.md) and research
+
+### Crates
+
+| Crate | Layer | Contents |
+|---|---|---|
+| `opendap-model` | Domain model | Types and schema IDs: devices, targets, virtual T1 instances, exec results, captures, input events, findings, error codes and errors as data |
+| `opendap-core` | Application core | Use cases (resolve a target, list devices, list, get, start and stop the virtual T1, exec, capture the screen, send input, doctor) written against ports: `VmProvider`, `VmBackend`, `DeviceTransport`, `ScreenSource`, `InputSink`, `HostProbe`, `Clock`. The `contract` feature exposes one test suite per port |
+| `opendap-transport-vm` | Adapter | The virtual T1 through the opendap-os checkout (`dap-qemu.sh`, `dap-qmp.py`), discovery of that checkout, and its `doctor` checks |
+| `opendap-transport-ssh` | Adapter | Commands over SSH, each argument quoted for the remote shell |
+| `opendap-host` | Adapter | Program lookup, the system clock and the host's `doctor` checks (platform, QEMU, Lima, pre-commit) |
+| `opendap-cli-kit` | Interface | Conventions of the toolkit CLIs: output modes, the error envelope, exit codes, command metadata, agent detection |
+| `opendap-cli` | Interface | The `opendap` binary: the command tree, command metadata (`src/meta.rs`), wiring of the adapters into the core, rendering |
+
+Dependencies point inward only: the model depends on no other crate here; the core on the model; adapters on the core and the model (the transports also use `opendap-host` to find programs); the interface crates on everything above. The model and the core do no I/O and hold no platform code. Platform-specific code lives in the adapters, which support POSIX hosts.
+
+Tests: unit tests of the core run against fake adapters; each adapter runs the contract suite of the ports it implements; `crates/opendap-cli/tests/` checks the binary. End-to-end checks run against the virtual T1 by hand (see [Usage](#usage)).
 
 ## License
 
 This repository follows the [REUSE](https://reuse.software) layout: license texts live in `LICENSES/` and `REUSE.toml` maps each path to its license.
 
 - Default (the `opendap` binary): **GNU GPL v3.0 or later** (`GPL-3.0-or-later`)
-- `crates/opendap-model/`, `crates/opendap-cli-kit/`: **Mozilla Public License 2.0** (`MPL-2.0`), libraries shared with OpenDAP Desktop and plugins
+- The library crates (`opendap-model`, `opendap-core`, `opendap-transport-vm`, `opendap-transport-ssh`, `opendap-host`, `opendap-cli-kit`): **Mozilla Public License 2.0** (`MPL-2.0`), libraries shared with OpenDAP Desktop and plugins
 - Markdown files and `docs/`: **Creative Commons Attribution-ShareAlike 4.0** (`CC-BY-SA-4.0`)
 - `templates/`: **MIT, so generated projects are not bound to the toolkit's license** (`MIT`)
 

@@ -1,0 +1,15 @@
+[package]
+name = "opendap-host"
+description = "Host adapter of the OpenDAP toolkit: program lookup, the system clock and the doctor probes for the host (platform, QEMU, Lima, pre-commit)"
+license = "MPL-2.0"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+opendap-model.workspace = true
+opendap-core.workspace = true
+
+[dev-dependencies]
+opendap-core = { workspace = true, features = ["contract"] }

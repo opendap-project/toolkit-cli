@@ -14,6 +14,10 @@ path = "src/main.rs"
 [dependencies]
 opendap-model.workspace = true
 opendap-cli-kit.workspace = true
+opendap-core.workspace = true
+opendap-host.workspace = true
+opendap-transport-ssh.workspace = true
+opendap-transport-vm.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

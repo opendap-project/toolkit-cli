@@ -134,7 +134,11 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "opendap-cli-kit",
+ "opendap-core",
+ "opendap-host",
  "opendap-model",
+ "opendap-transport-ssh",
+ "opendap-transport-vm",
  "serde",
  "serde_json",
 ]
@@ -146,7 +150,22 @@ dependencies = [
  "opendap-model",
  "serde",
  "serde_json",
- "thiserror",
+]
+
+[[package]]
+name = "opendap-core"
+version = "0.1.0"
+dependencies = [
+ "opendap-model",
+ "serde_json",
+]
+
+[[package]]
+name = "opendap-host"
+version = "0.1.0"
+dependencies = [
+ "opendap-core",
+ "opendap-model",
 ]
 
 [[package]]
@@ -154,6 +173,26 @@ name = "opendap-model"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "opendap-transport-ssh"
+version = "0.1.0"
+dependencies = [
+ "opendap-core",
+ "opendap-host",
+ "opendap-model",
+]
+
+[[package]]
+name = "opendap-transport-vm"
+version = "0.1.0"
+dependencies = [
+ "opendap-core",
+ "opendap-host",
+ "opendap-model",
  "serde_json",
 ]
 

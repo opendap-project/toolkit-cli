@@ -208,6 +208,22 @@ pub struct Device {
     pub serial: Option<String>,
 }
 
+/// A non-fatal problem met while discovering devices.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Warning {
+    /// An error code from [`crate::error`].
+    pub code: String,
+    pub message: String,
+}
+
+/// The result of device discovery (`opendap.device_list/v1`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceList {
+    pub items: Vec<Device>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<Warning>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

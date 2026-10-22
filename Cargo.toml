@@ -16,3 +16,7 @@ serde_json = "1"
 thiserror = "2"
 opendap-model = { path = "crates/opendap-model" }
 opendap-cli-kit = { path = "crates/opendap-cli-kit" }
+opendap-core = { path = "crates/opendap-core" }
+opendap-host = { path = "crates/opendap-host" }
+opendap-transport-ssh = { path = "crates/opendap-transport-ssh" }
+opendap-transport-vm = { path = "crates/opendap-transport-vm" }

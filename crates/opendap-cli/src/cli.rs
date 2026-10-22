@@ -176,8 +176,7 @@ pub enum InputEvent {
 }
 
 /// The four T1 buttons.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, serde::Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Button {
     Action,
     VolUp,
@@ -185,13 +184,13 @@ pub enum Button {
     Power,
 }
 
-impl Button {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Button::Action => "action",
-            Button::VolUp => "vol-up",
-            Button::VolDown => "vol-down",
-            Button::Power => "power",
+impl From<Button> for opendap_model::Button {
+    fn from(b: Button) -> Self {
+        match b {
+            Button::Action => opendap_model::Button::Action,
+            Button::VolUp => opendap_model::Button::VolUp,
+            Button::VolDown => opendap_model::Button::VolDown,
+            Button::Power => opendap_model::Button::Power,
         }
     }
 }
@@ -299,6 +298,14 @@ mod tests {
         assert!(parse(&["input", "send", "tap", "319", "479"]).is_ok());
         assert!(parse(&["input", "send", "tap", "320", "0"]).is_err());
         assert!(parse(&["input", "send", "tap", "0", "480"]).is_err());
+    }
+
+    #[test]
+    fn buttons_keep_their_names() {
+        for b in Button::value_variants() {
+            let name = b.to_possible_value().unwrap().get_name().to_string();
+            assert_eq!(opendap_model::Button::from(*b).as_str(), name);
+        }
     }
 
     #[test]

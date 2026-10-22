@@ -1,56 +1,35 @@
 use opendap_cli_kit::CliError;
 use opendap_cli_kit::output::note;
-use opendap_model::Transport;
-use serde::Serialize;
+use opendap_core::{Need, Outcome, resolve_target};
+use opendap_transport_vm::LocalVms;
 
-use super::{Ctx, Doc, Need, emit_plan, resolve_target};
-use crate::cli::{Button, InputCmd, InputEvent};
-
-#[derive(Serialize)]
-#[serde(tag = "kind", rename_all = "lowercase")]
-enum Event {
-    Key { button: Button, hold_ms: u64 },
-    Tap { x: u32, y: u32 },
-}
-
-#[derive(Serialize)]
-struct Sent {
-    target: Transport,
-    event: Event,
-    changed: bool,
-}
+use super::{Ctx, Doc, emit_plan};
+use crate::cli::{InputCmd, InputEvent};
 
 pub fn run(ctx: &Ctx, cmd: InputCmd) -> Result<u8, CliError> {
     let InputCmd::Send { event } = cmd;
-    let (vm, target) = resolve_target(ctx, Need::Qmp)?;
-    let (args, event, text): (Vec<String>, Event, String) = match event {
-        InputEvent::Key { button, hold_ms } => (
-            vec!["press".into(), button.as_str().into(), hold_ms.to_string()],
-            Event::Key { button, hold_ms },
-            format!("pressed {} for {hold_ms} ms on {target}", button.as_str()),
-        ),
-        InputEvent::Tap { x, y } => (
-            vec!["tap".into(), x.to_string(), y.to_string()],
-            Event::Tap { x, y },
-            format!("tapped {x},{y} on {target}"),
-        ),
+    let (vm, target) = resolve_target(&LocalVms, ctx.target.as_ref(), Need::Qmp)?;
+    let event = match event {
+        InputEvent::Key { button, hold_ms } => opendap_model::InputEvent::Key {
+            button: button.into(),
+            hold_ms,
+        },
+        InputEvent::Tap { x, y } => opendap_model::InputEvent::Tap { x, y },
     };
-    if ctx.dry_run {
-        return emit_plan(
-            ctx,
-            "opendap.input/v1",
-            vec![format!("dap-qmp.py {}", args.join(" "))],
-        );
-    }
-    vm.qmp(&args)?;
+    let text = match event {
+        opendap_model::InputEvent::Key { button, hold_ms } => {
+            format!("pressed {} for {hold_ms} ms on {target}", button.as_str())
+        }
+        opendap_model::InputEvent::Tap { x, y } => format!("tapped {x},{y} on {target}"),
+    };
+    let sent = match opendap_core::input::send(&vm, target, event, ctx.dry_run)? {
+        Outcome::Plan(plan) => return emit_plan(ctx, "opendap.input/v1", plan),
+        Outcome::Done(sent) => sent,
+    };
     ctx.out.emit(
         &Doc {
             schema: "opendap.input/v1",
-            body: Sent {
-                target,
-                event,
-                changed: true,
-            },
+            body: sent,
         },
         || {
             note(&text);

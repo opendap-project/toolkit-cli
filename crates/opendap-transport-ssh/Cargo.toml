@@ -1,0 +1,16 @@
+[package]
+name = "opendap-transport-ssh"
+description = "SSH adapter of the OpenDAP toolkit: runs commands on a device with every argument quoted for the remote shell"
+license = "MPL-2.0"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+opendap-model.workspace = true
+opendap-core.workspace = true
+opendap-host.workspace = true
+
+[dev-dependencies]
+opendap-core = { workspace = true, features = ["contract"] }

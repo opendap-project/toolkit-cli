@@ -102,7 +102,7 @@ impl Output {
             let mut out = std::io::stdout().lock();
             let _ = writeln!(out, "{}", self.json_string(&err.document()));
         }
-        eprint!("{}", err.human());
+        eprint!("{}", crate::error::human(err));
     }
 }
 

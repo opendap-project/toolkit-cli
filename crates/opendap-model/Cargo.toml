@@ -1,6 +1,6 @@
 [package]
 name = "opendap-model"
-description = "Shared domain types of the OpenDAP toolkit: devices, targets, findings and error codes"
+description = "Shared domain types of the OpenDAP toolkit: devices, targets, virtual T1 instances, findings, errors as data"
 license = "MPL-2.0"
 version.workspace = true
 edition.workspace = true
@@ -10,3 +10,4 @@ publish.workspace = true
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true

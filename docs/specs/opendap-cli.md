@@ -28,7 +28,7 @@ Every toolkit tool adopts §8 of the research report as written: grammar, global
 ## 3. Architecture
 
 - **One front door, external plugins.** `opendap` is a single Rust binary. Heavier toolkit tools ship as `opendap-<tool>` binaries and run as external subcommands (the cargo and git pattern): `opendap image build` → `opendap-image build`. The device CLI stays small, and every tool shares one grammar and one `cli search`.
-- **Crates:** `opendap-model` (types and schemas), `opendap-cli-kit` (flags, output, errors, targets, config, logging, agent detection, help, schema, MCP, `doctor` framework, self-update), and one crate per binary.
+- **Crates:** `opendap-model` (types and schemas), `opendap-cli-kit` (flags, output, errors, targets, config, logging, agent detection, help, schema, MCP, `doctor` framework, self-update), and one crate per binary. Use cases live in `opendap-core` and its adapter crates, layered as the [Rust crate architecture](https://github.com/opendap-project/system/blob/main/docs/specs/rust-crate-architecture.md) sets out.
 - **Transports in v0:**
   - SSH, over the network or over USB networking from the main USB-C in gadget mode.
   - Serial console, over the same USB-C path (BRD-039).
