@@ -1,0 +1,183 @@
+//! Stable error codes and the error envelope (`opendap.error/v1`).
+//!
+//! Remediation knowledge lives here, not in ad-hoc switches: each code carries
+//! its exit code, whether a retry can help, and a default hint.
+
+use serde::{Deserialize, Serialize};
+
+/// Coarse, stable exit codes for shells. The JSON `code` is the precise contract.
+pub mod exit {
+    pub const OK: u8 = 0;
+    pub const FAILURE: u8 = 1;
+    pub const USAGE: u8 = 2;
+    pub const NOT_FOUND: u8 = 3;
+    pub const AUTH: u8 = 4;
+    pub const PERMISSION: u8 = 5;
+    pub const AMBIGUOUS: u8 = 6;
+    pub const BUSY: u8 = 7;
+    pub const TIMEOUT: u8 = 8;
+    pub const CONFIRM: u8 = 9;
+    pub const PRECONDITION: u8 = 10;
+    pub const UNSUPPORTED: u8 = 11;
+    pub const INTERRUPTED: u8 = 130;
+}
+
+/// A stable error code: `<area>.<condition>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct ErrorCode {
+    pub code: &'static str,
+    pub exit: u8,
+    pub retryable: bool,
+    /// What the code means, for `schema` and the error catalogue.
+    pub summary: &'static str,
+    /// Default hint when the error site gives none.
+    pub hint: &'static str,
+}
+
+macro_rules! codes {
+    ($( $name:ident = ($code:literal, $exit:expr, $retry:literal, $summary:literal, $hint:literal); )*) => {
+        $( pub const $name: ErrorCode = ErrorCode {
+            code: $code, exit: $exit, retryable: $retry, summary: $summary, hint: $hint,
+        }; )*
+        /// Every code this model version defines.
+        pub const ALL: &[ErrorCode] = &[$($name),*];
+    };
+}
+
+codes! {
+    INPUT_INVALID = ("input.invalid", exit::USAGE, false,
+        "An argument or flag value is invalid.",
+        "Run the command with --help, or `opendap schema <command>` for the accepted values.");
+    INPUT_MISSING = ("input.missing", exit::USAGE, false,
+        "A value is required and prompting is disabled.",
+        "Pass the value explicitly; prompts are disabled without a TTY, under OPENDAP_NO_INPUT=1 or --no-input.");
+    COMMAND_UNKNOWN = ("command.unknown", exit::NOT_FOUND, false,
+        "No command matches the given path.",
+        "Run `opendap schema` to list every command.");
+    TARGET_INVALID = ("target.invalid", exit::USAGE, false,
+        "The target selector does not parse.",
+        "Use vm:<name>, usb:<serial>, net:<host>[:port], serial:<path> or maskrom:<bus>-<addr>.");
+    TARGET_UNSUPPORTED = ("target.unsupported", exit::UNSUPPORTED, false,
+        "This build cannot reach that kind of target yet.",
+        "Only the virtual T1 (vm:default) is supported in this version.");
+    DEVICE_NOT_FOUND = ("device.not_found", exit::NOT_FOUND, false,
+        "No device matches the target, or no device is running.",
+        "Run `opendap device list`, or start the virtual T1 with `opendap vm start`.");
+    VM_NOT_FOUND = ("vm.not_found", exit::NOT_FOUND, false,
+        "No virtual T1 instance has that name.",
+        "Run `opendap vm list`; the only instance is `default`.");
+    VM_NOT_RUNNING = ("vm.not_running", exit::PRECONDITION, false,
+        "The virtual T1 is stopped or still booting.",
+        "Run `opendap vm start` (it waits for the boot to finish).");
+    VM_IMAGE_MISSING = ("vm.image_missing", exit::PRECONDITION, true,
+        "The virtual T1 image has not been built, or is being rebuilt.",
+        "Build it with `build/dap-image.sh qemu` in the opendap-os checkout, or wait for the running build.");
+    VM_START_FAILED = ("vm.start_failed", exit::FAILURE, true,
+        "QEMU did not start.",
+        "Read build/run/qemu.log in the opendap-os checkout and run `opendap doctor`.");
+    VM_BOOT_TIMEOUT = ("vm.boot_timeout", exit::TIMEOUT, true,
+        "The virtual T1 started but SSH did not answer in time.",
+        "Check build/run/console.log, or retry with a longer --wait-timeout.");
+    VM_STOP_TIMEOUT = ("vm.stop_timeout", exit::TIMEOUT, true,
+        "QEMU did not exit in time after the stop request.",
+        "Retry `opendap vm stop`.");
+    WORKSPACE_NOT_FOUND = ("workspace.not_found", exit::PRECONDITION, false,
+        "The opendap-os checkout that provides the virtual T1 was not found.",
+        "Run from inside the OpenDAP workspace, or set OPENDAP_OS_DIR to the opendap-os checkout.");
+    HOST_TOOL_MISSING = ("host.tool_missing", exit::PRECONDITION, false,
+        "A host program the command needs is not installed.",
+        "Run `opendap doctor` for the missing tool and how to install it.");
+    HOST_IO = ("host.io", exit::FAILURE, false,
+        "A file on the host could not be read or written.",
+        "Check the path and its permissions.");
+    TRANSPORT_SSH_FAILED = ("transport.ssh_failed", exit::FAILURE, true,
+        "The SSH connection to the target failed.",
+        "Check that the target is online with `opendap device list`, then retry.");
+    TRANSPORT_QMP_FAILED = ("transport.qmp_failed", exit::FAILURE, true,
+        "The QMP command to the virtual T1 failed.",
+        "Check that the virtual T1 is running with `opendap vm get`, then retry.");
+}
+
+/// Find a code by its identifier.
+pub fn lookup(code: &str) -> Option<&'static ErrorCode> {
+    ALL.iter().find(|c| c.code == code)
+}
+
+/// A remediation step.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Fix {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+}
+
+impl Fix {
+    pub fn command(command: impl Into<String>) -> Self {
+        Fix {
+            description: None,
+            command: Some(command.into()),
+        }
+    }
+    pub fn describe(description: impl Into<String>) -> Self {
+        Fix {
+            description: Some(description.into()),
+            command: None,
+        }
+    }
+}
+
+/// The `error` member of the envelope.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ErrorBody {
+    pub code: String,
+    pub message: String,
+    pub hint: String,
+    pub fix: Vec<Fix>,
+    pub retryable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<serde_json::Value>,
+    pub docs: String,
+}
+
+/// The error envelope (`opendap.error/v1`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ErrorDocument {
+    pub schema: String,
+    pub ok: bool,
+    pub error: ErrorBody,
+}
+
+impl ErrorDocument {
+    pub fn new(body: ErrorBody) -> Self {
+        ErrorDocument {
+            schema: "opendap.error/v1".into(),
+            ok: false,
+            error: body,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn codes_are_unique_dotted_and_documented() {
+        let mut seen = std::collections::HashSet::new();
+        for c in ALL {
+            assert!(seen.insert(c.code), "duplicate code {}", c.code);
+            let (area, cond) = c.code.split_once('.').expect("dotted");
+            assert!(!area.is_empty() && !cond.is_empty());
+            assert!(
+                c.code
+                    .chars()
+                    .all(|ch| ch.is_ascii_lowercase() || ch == '.' || ch == '_')
+            );
+            assert!(!c.summary.is_empty() && !c.hint.is_empty());
+            assert!(c.exit <= 11 || c.exit == exit::INTERRUPTED);
+        }
+        assert_eq!(lookup("vm.not_running"), Some(&VM_NOT_RUNNING));
+        assert_eq!(lookup("nope.nope"), None);
+    }
+}

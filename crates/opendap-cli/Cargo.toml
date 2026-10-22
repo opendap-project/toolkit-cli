@@ -1,0 +1,19 @@
+[package]
+name = "opendap-cli"
+description = "The opendap command-line tool for the T1 and OpenDAP OS"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "opendap"
+path = "src/main.rs"
+
+[dependencies]
+opendap-model.workspace = true
+opendap-cli-kit.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true

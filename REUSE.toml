@@ -23,3 +23,27 @@ path = "templates/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 The OpenDAP Project"
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "crates/opendap-model/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The OpenDAP Project"
+SPDX-License-Identifier = "MPL-2.0"
+
+[[annotations]]
+path = "crates/opendap-cli-kit/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The OpenDAP Project"
+SPDX-License-Identifier = "MPL-2.0"
+
+[[annotations]]
+path = "crates/opendap-model/**/*.md"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The OpenDAP Project"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = "crates/opendap-cli-kit/**/*.md"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The OpenDAP Project"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
