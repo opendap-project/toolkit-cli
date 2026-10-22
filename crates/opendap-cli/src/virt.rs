@@ -266,7 +266,10 @@ pub fn tail(path: &Path, lines: usize) -> String {
 
 /// Quote one argument for the remote POSIX shell, so argv reaches the device unchanged.
 pub fn shell_quote(arg: &str) -> String {
+    // An argument starting with '-' is always quoted, so the remote command can never start with
+    // something ssh could read as an option (dap-qemu.sh also ends ssh options with `--`).
     let safe = !arg.is_empty()
+        && !arg.starts_with('-')
         && arg
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || "-_./=:,+@%".contains(c));
@@ -295,10 +298,11 @@ mod tests {
     #[test]
     fn quoting_preserves_argv() {
         assert_eq!(shell_quote("uname"), "uname");
-        assert_eq!(shell_quote("-a"), "-a");
+        assert_eq!(shell_quote("-a"), "'-a'");
         assert_eq!(shell_quote("ls | wc"), "'ls | wc'");
         assert_eq!(shell_quote("it's"), r"'it'\''s'");
         assert_eq!(shell_quote(""), "''");
+        assert_eq!(shell_quote("-oProxyCommand=x"), "'-oProxyCommand=x'");
     }
 
     #[test]
