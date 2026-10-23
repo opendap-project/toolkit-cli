@@ -175,7 +175,7 @@ impl HostProbe for Lima {
                 id,
                 title,
                 Status::Warn,
-                "limactl is not on PATH; it is needed only to build OpenDAP OS images",
+                "limactl is not on PATH; it is needed only to build Blackbird OS images",
                 Some(Fix {
                     description: Some("Install Lima".into()),
                     command: Some("brew install lima".into()),
@@ -185,12 +185,12 @@ impl HostProbe for Lima {
         let version = first_line(&lima, &["--version"]).unwrap_or_else(|| "version unknown".into());
         let instance = first_line(
             &lima,
-            &["list", "--format", "{{.Status}}", "opendap-os-build"],
+            &["list", "--format", "{{.Status}}", "blackbird-os-build"],
         )
         .filter(|s| !s.is_empty())
-        .map(|s| format!("build VM opendap-os-build: {}", s.to_lowercase()))
+        .map(|s| format!("build VM blackbird-os-build: {}", s.to_lowercase()))
         .unwrap_or_else(|| {
-            "build VM opendap-os-build not created yet (dap-image.sh creates it)".into()
+            "build VM blackbird-os-build not created yet (dap-image.sh creates it)".into()
         });
         vec![finding(
             id,

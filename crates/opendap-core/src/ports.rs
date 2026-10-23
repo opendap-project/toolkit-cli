@@ -11,7 +11,7 @@ pub trait VmProvider {
     type Vm: VmBackend;
 
     /// Locate the backend. Fails when it is not installed (for example no
-    /// opendap-os checkout).
+    /// blackbird-os checkout).
     fn locate(&self) -> Result<Self::Vm, Error>;
 }
 

@@ -7,8 +7,8 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 #[derive(Debug, Parser)]
 #[command(
     name = "opendap",
-    about = "The command-line tool for the T1 and OpenDAP OS",
-    long_about = "The command-line tool for the T1 and OpenDAP OS.\n\n\
+    about = "The command-line tool for the T1 and Blackbird OS",
+    long_about = "The command-line tool for the T1 and Blackbird OS.\n\n\
         Agents: run `opendap schema` for every command with its flags, \
         output schema and error codes, then `opendap schema <command>`.",
     disable_version_flag = true,
@@ -63,7 +63,7 @@ pub struct Global {
 pub enum Command {
     /// Version details
     Version,
-    /// Check the host: platform, QEMU, Lima, the opendap-os checkout, the dev SSH key, the virtual T1 image, pre-commit
+    /// Check the host: platform, QEMU, Lima, the blackbird-os checkout, the dev SSH key, the virtual T1 image, pre-commit
     Doctor,
     /// Machine-readable description of every command, or of one
     Schema {

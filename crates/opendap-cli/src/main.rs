@@ -1,4 +1,4 @@
-//! `opendap`: the command-line tool for the T1 and OpenDAP OS.
+//! `opendap`: the command-line tool for the T1 and Blackbird OS.
 //!
 //! Interface layer: parses arguments, wires the adapters into `opendap-core`
 //! and renders the results through `opendap-cli-kit`.

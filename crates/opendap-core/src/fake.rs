@@ -132,7 +132,7 @@ impl VmBackend for FakeVm {
     }
 }
 
-/// Hands out one [`FakeVm`], or fails like a host without opendap-os.
+/// Hands out one [`FakeVm`], or fails like a host without blackbird-os.
 pub struct FakeProvider {
     pub vm: FakeVm,
     pub missing: bool,
@@ -169,7 +169,7 @@ impl VmProvider for FakeProvider {
         if self.missing {
             Err(Error::new(
                 &codes::WORKSPACE_NOT_FOUND,
-                "no public/opendap-os found above /",
+                "no public/blackbird-os found above /",
             ))
         } else {
             Ok(self.vm.clone())

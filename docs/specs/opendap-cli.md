@@ -70,7 +70,7 @@ Canonical form first, then the ADB-style shortcut where one exists.
 | Command | Shortcut | What it does |
 |---|---|---|
 | `device list` | `devices` | Every reachable T1 (USB, network, MaskROM) and virtual T1, with mode and transport |
-| `device get` | | Model, revision, serial, OpenDAP OS version, mode, battery, storage, attached faceplate and HAT |
+| `device get` | | Model, revision, serial, Blackbird OS version, mode, battery, storage, attached faceplate and HAT |
 | `device wait --mode <mode>` | | Waits until the target reaches a mode (`normal`, `recovery`, `maskrom`, `gadget:*`) |
 | `device reboot [--mode normal\|recovery\|maskrom]` | `reboot` | Reboots, optionally into another mode |
 | `device pair` / `device unpair` | | Exchanges the host key with the device, which confirms on screen or over the console |
@@ -93,7 +93,7 @@ Canonical form first, then the ADB-style shortcut where one exists.
 | Command | Shortcut | What it does |
 |---|---|---|
 | `capability list\|get\|install\|uninstall\|update` | | Third-party capabilities, the T1's equivalent of apps |
-| `os get` | | OpenDAP OS version, A/B slot, pending update |
+| `os get` | | Blackbird OS version, A/B slot, pending update |
 | `os check` / `os install <bundle\|version>` | | Looks for an update / applies an OTA bundle, with rollback |
 | `service list\|get\|start\|stop\|restart` | | System services |
 
@@ -101,7 +101,7 @@ Canonical form first, then the ADB-style shortcut where one exists.
 
 | Command | Shortcut | What it does |
 |---|---|---|
-| `image list` | | Available OpenDAP OS releases |
+| `image list` | | Available Blackbird OS releases |
 | `image pull <version>` | | Downloads and verifies a release image |
 | `image flash <file\|version>` | `flash` | Flashes over MaskROM / loader or USB mass storage. Destructive: requires an explicit target and confirmation (type the serial) or `--force` |
 
@@ -111,7 +111,7 @@ Canonical form first, then the ADB-style shortcut where one exists.
 |---|---|
 | `chip list` | Every programmable chip on the board and on attached HATs: RP2350 coprocessor, HAT microcontrollers, FPGAs, other SoCs |
 | `chip get <chip>` | Identity, firmware version, how it is reached (SWD, JTAG, USB, SPI) |
-| `chip flash <chip> <firmware>` | Flashes firmware from OpenDAP OS. Destructive |
+| `chip flash <chip> <firmware>` | Flashes firmware from Blackbird OS. Destructive |
 | `chip restart <chip>` | Resets a chip, optionally into its boot mode |
 | `chip start <chip> --debug` | Starts a debug server (GDB) on the device and forwards it to the host |
 | `hat get` | EEPROM contents, capability manifest and signature status |
@@ -138,11 +138,11 @@ Canonical form first, then the ADB-style shortcut where one exists.
 
 | Command | Binary | Replaces |
 |---|---|---|
-| `image build [--profile qemu\|oci\|t1]` | `opendap-image` | `opendap-os/build/dap-image.sh` |
-| `vm start\|stop` (backend) | `opendap-image` | `opendap-os/build/dap-qemu.sh`, `dap-qmp.py` |
+| `image build [--profile qemu\|oci\|t1]` | `opendap-image` | `blackbird-os/build/dap-image.sh` |
+| `vm start\|stop` (backend) | `opendap-image` | `blackbird-os/build/dap-qemu.sh`, `dap-qmp.py` |
 | `fab package <project>` | `opendap-fab` | `toolkit/hardware/tools/fab-package.sh` |
 | `export build` | `opendap-export` | `toolkit/hardware/tools/freecad-export.py` |
-| `security check` | `opendap-image` | `opendap-os/build/security-check.py` |
+| `security check` | `opendap-image` | `blackbird-os/build/security-check.py` |
 | `verify …` | to be defined | verification instrumentation (in progress) |
 
 ## 6. Release

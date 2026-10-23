@@ -1,6 +1,6 @@
 [package]
 name = "opendap-transport-vm"
-description = "Virtual T1 adapter of the OpenDAP toolkit: the opendap-os QEMU backend (dap-qemu.sh, dap-qmp.py) and workspace discovery"
+description = "Virtual T1 adapter of the OpenDAP toolkit: the blackbird-os QEMU backend (dap-qemu.sh, dap-qmp.py) and workspace discovery"
 license = "MPL-2.0"
 version.workspace = true
 edition.workspace = true

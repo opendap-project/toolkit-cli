@@ -1,6 +1,6 @@
 # Toolkit CLI
 
-The `opendap` command-line tool: an ADB-style, agentic-first CLI for the T1 and OpenDAP OS, written in Rust.
+The `opendap` command-line tool: an ADB-style, agentic-first CLI for the T1 and Blackbird OS, written in Rust.
 
 Part of the [OpenDAP](https://github.com/opendap-project) Developer Toolkit, which lives in the workspace under `public/toolkit/` as one repository per tool domain.
 
@@ -11,7 +11,7 @@ A first slice of the [CLI spec](docs/specs/opendap-cli.md) is implemented. It wo
 | Command | What it does |
 |---|---|
 | `version` | Version, commit, build target and model schema IDs |
-| `doctor` | Checks the host platform, `ssh` and `python3`, QEMU, Lima, the opendap-os checkout, the development SSH key, the virtual T1 image and pre-commit. Exits 1 when any check is an error |
+| `doctor` | Checks the host platform, `ssh` and `python3`, QEMU, Lima, the blackbird-os checkout, the development SSH key, the virtual T1 image and pre-commit. Exits 1 when any check is an error |
 | `schema [<command>]` | Command metadata as JSON: arguments, flags, category, idempotency, output schema, error codes, examples |
 | `vm list`, `vm get [<name>]` | The virtual T1 instance, its state (`stopped`, `booting`, `running`) and endpoints |
 | `vm start [<name>]`, `vm stop [<name>]` | Boots the virtual T1 and waits until SSH answers (`--detach` returns at once, `--wait-timeout` defaults to `180s`); stops it. Both are idempotent |
@@ -23,7 +23,7 @@ A first slice of the [CLI spec](docs/specs/opendap-cli.md) is implemented. It wo
 
 Every other command in the spec is not implemented yet.
 
-Known issue: `input send tap` fails with `transport.qmp_failed`, because QEMU rejects the absolute-pointer events that `dap-qmp.py tap` sends to the virtio multitouch device (`Input handler not found for event type abs`). The fix belongs in opendap-os.
+Known issue: `input send tap` fails with `transport.qmp_failed`, because QEMU rejects the absolute-pointer events that `dap-qmp.py tap` sends to the virtio multitouch device (`Input handler not found for event type abs`). The fix belongs in blackbird-os.
 
 ## Build
 
@@ -46,9 +46,9 @@ opendap vm stop
 
 ### Virtual T1 backend
 
-The virtual T1 runs from an opendap-os checkout through its `build/dap-qemu.sh` and `build/dap-qmp.py`. The CLI finds the checkout in `$OPENDAP_OS_DIR`, or by walking up from the current directory to the folder that contains `public/opendap-os`. `DAP_SSH_PORT` and `DAP_VNC_DISPLAY` are honoured as in `dap-qemu.sh`. There is a single instance, `default`, addressed as `vm:default`.
+The virtual T1 runs from an blackbird-os checkout through its `build/dap-qemu.sh` and `build/dap-qmp.py`. The CLI finds the checkout in `$BLACKBIRD_OS_DIR`, or by walking up from the current directory to the folder that contains `public/blackbird-os`. `DAP_SSH_PORT` and `DAP_VNC_DISPLAY` are honoured as in `dap-qemu.sh`. There is a single instance, `default`, addressed as `vm:default`.
 
-The image is built with `build/dap-image.sh qemu` in the opendap-os checkout. While it is missing, `doctor` reports it and `vm start` fails with `vm.image_missing`.
+The image is built with `build/dap-image.sh qemu` in the blackbird-os checkout. While it is missing, `doctor` reports it and `vm start` fails with `vm.image_missing`.
 
 ### Shared conventions
 
@@ -72,7 +72,7 @@ The image is built with `build/dap-image.sh qemu` in the opendap-os checkout. Wh
 |---|---|---|
 | `opendap-model` | Domain model | Types and schema IDs: devices, targets, virtual T1 instances, exec results, captures, input events, findings, error codes and errors as data |
 | `opendap-core` | Application core | Use cases (resolve a target, list devices, list, get, start and stop the virtual T1, exec, capture the screen, send input, doctor) written against ports: `VmProvider`, `VmBackend`, `DeviceTransport`, `ScreenSource`, `InputSink`, `HostProbe`, `Clock`. The `contract` feature exposes one test suite per port |
-| `opendap-transport-vm` | Adapter | The virtual T1 through the opendap-os checkout (`dap-qemu.sh`, `dap-qmp.py`), discovery of that checkout, and its `doctor` checks |
+| `opendap-transport-vm` | Adapter | The virtual T1 through the blackbird-os checkout (`dap-qemu.sh`, `dap-qmp.py`), discovery of that checkout, and its `doctor` checks |
 | `opendap-transport-ssh` | Adapter | Commands over SSH, each argument quoted for the remote shell |
 | `opendap-host` | Adapter | Program lookup, the system clock and the host's `doctor` checks (platform, QEMU, Lima, pre-commit) |
 | `opendap-cli-kit` | Interface | Conventions of the toolkit CLIs: output modes, the error envelope, exit codes, command metadata, agent detection |

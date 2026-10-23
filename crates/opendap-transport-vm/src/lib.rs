@@ -1,5 +1,5 @@
 //! Virtual T1 adapter of the OpenDAP toolkit: wraps `build/dap-qemu.sh` and
-//! `build/dap-qmp.py` from an opendap-os checkout. It manages a single
+//! `build/dap-qmp.py` from an blackbird-os checkout. It manages a single
 //! instance, `vm:default`, and implements the core's [`VmProvider`],
 //! [`VmBackend`], [`ScreenSource`] and [`InputSink`] ports, and the
 //! [`CheckoutProbe`] for `doctor`. POSIX hosts only.
@@ -48,7 +48,7 @@ pub fn image_build_running() -> bool {
         .is_ok_and(|s| s.success())
 }
 
-/// Finds the opendap-os checkout from `$OPENDAP_OS_DIR` or the current
+/// Finds the blackbird-os checkout from `$BLACKBIRD_OS_DIR` or the current
 /// directory (see [`workspace`]).
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LocalVms;
@@ -60,7 +60,7 @@ impl VmProvider for LocalVms {
     }
 }
 
-/// The virtual T1 of one opendap-os checkout.
+/// The virtual T1 of one blackbird-os checkout.
 #[derive(Debug, Clone)]
 pub struct VirtualT1 {
     pub os_dir: PathBuf,
@@ -98,7 +98,7 @@ impl VirtualT1 {
         self.run_dir().join("qemu.log")
     }
     pub fn image(&self) -> PathBuf {
-        self.os_dir.join("image/mkosi.output/opendap-os-qemu.raw")
+        self.os_dir.join("image/mkosi.output/blackbird-os-qemu.raw")
     }
     pub fn dev_key(&self) -> PathBuf {
         self.os_dir.join("build/dev-ssh/id_ed25519")
@@ -297,7 +297,7 @@ impl InputSink for VirtualT1 {
     }
 }
 
-/// `doctor` checks of the opendap-os checkout: `workspace.opendap_os`,
+/// `doctor` checks of the blackbird-os checkout: `workspace.blackbird_os`,
 /// `auth.dev_key` and `vm.image`.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct CheckoutProbe;
@@ -308,12 +308,12 @@ impl HostProbe for CheckoutProbe {
             Ok(dir) => checkout_findings(&VirtualT1 { os_dir: dir }),
             Err(e) => {
                 let skip = |id: &str, title: &str| {
-                    finding(id, title, Status::Skip, "no opendap-os checkout", None)
+                    finding(id, title, Status::Skip, "no blackbird-os checkout", None)
                 };
                 vec![
                     finding(
-                        "workspace.opendap_os",
-                        "opendap-os checkout",
+                        "workspace.blackbird_os",
+                        "blackbird-os checkout",
                         Status::Error,
                         e.message,
                         Some(Fix::describe(format!(
@@ -333,8 +333,8 @@ fn checkout_findings(vm: &VirtualT1) -> Vec<Finding> {
     let os_dir = vm.os_dir.display().to_string();
     let build_cmd = vm.image_build_command();
     let mut out = vec![finding(
-        "workspace.opendap_os",
-        "opendap-os checkout",
+        "workspace.blackbird_os",
+        "blackbird-os checkout",
         Status::Ok,
         os_dir,
         None,
@@ -418,7 +418,7 @@ mod tests {
         }
     }
 
-    /// An opendap-os checkout with no image and nothing running.
+    /// An blackbird-os checkout with no image and nothing running.
     fn checkout(name: &str) -> (Tmp, VirtualT1) {
         let p = std::env::temp_dir().join(format!("opendap-vm-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&p);
@@ -482,7 +482,7 @@ mod tests {
         }
         let findings = checkout_findings(&vm);
         let ids: Vec<_> = findings.iter().map(|f| f.id.as_str()).collect();
-        assert_eq!(ids, ["workspace.opendap_os", "auth.dev_key", "vm.image"]);
+        assert_eq!(ids, ["workspace.blackbird_os", "auth.dev_key", "vm.image"]);
         assert_eq!(findings[1].status, Status::Error);
         contract::host_probe(&Fixed(findings));
         contract::host_probe(&CheckoutProbe);

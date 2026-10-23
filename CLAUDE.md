@@ -1,6 +1,6 @@
 # Toolkit CLI
 
-The `opendap` command-line tool: an ADB-style, agentic-first CLI for the T1 and OpenDAP OS, written in Rust.
+The `opendap` command-line tool: an ADB-style, agentic-first CLI for the T1 and Blackbird OS, written in Rust.
 
 Part of [OpenDAP](https://github.com/opendap-project). This repository is open source.
 

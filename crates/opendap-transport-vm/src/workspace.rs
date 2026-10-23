@@ -1,4 +1,4 @@
-//! Locating the opendap-os checkout that provides the virtual T1 backend
+//! Locating the blackbird-os checkout that provides the virtual T1 backend
 //! (`build/dap-qemu.sh`, `build/dap-qmp.py`).
 
 use std::path::{Path, PathBuf};
@@ -6,19 +6,19 @@ use std::path::{Path, PathBuf};
 use opendap_model::Error;
 use opendap_model::error as codes;
 
-/// Environment variable that points at an opendap-os checkout.
-pub const OS_DIR_VAR: &str = "OPENDAP_OS_DIR";
+/// Environment variable that points at an blackbird-os checkout.
+pub const OS_DIR_VAR: &str = "BLACKBIRD_OS_DIR";
 
-/// Where the opendap-os checkout sits inside the workspace.
-pub const OS_IN_WORKSPACE: &str = "public/opendap-os";
+/// Where the blackbird-os checkout sits inside the workspace.
+pub const OS_IN_WORKSPACE: &str = "public/blackbird-os";
 
-/// A directory is an opendap-os checkout when it has the virtual T1 runner.
+/// A directory is an blackbird-os checkout when it has the virtual T1 runner.
 pub fn is_os_checkout(dir: &Path) -> bool {
     dir.join("build/dap-qemu.sh").is_file()
 }
 
-/// `$OPENDAP_OS_DIR` when set (it must be a checkout), otherwise walk up from
-/// `cwd` to the folder that contains `public/opendap-os`.
+/// `$BLACKBIRD_OS_DIR` when set (it must be a checkout), otherwise walk up from
+/// `cwd` to the folder that contains `public/blackbird-os`.
 pub fn find_os_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, Error> {
     if let Some(v) = env_value.filter(|v| !v.is_empty()) {
         let p = PathBuf::from(v);
@@ -28,10 +28,10 @@ pub fn find_os_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, 
         } else {
             Err(Error::new(
                 &codes::WORKSPACE_NOT_FOUND,
-                format!("{OS_DIR_VAR}={v} is not an opendap-os checkout (no build/dap-qemu.sh)"),
+                format!("{OS_DIR_VAR}={v} is not an blackbird-os checkout (no build/dap-qemu.sh)"),
             )
             .hint(format!(
-                "Point {OS_DIR_VAR} at the opendap-os repository, or unset it."
+                "Point {OS_DIR_VAR} at the blackbird-os repository, or unset it."
             )))
         };
     }
@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn walks_up_to_the_workspace() {
         let t = tmp("walk");
-        let os = t.0.join("public/opendap-os");
+        let os = t.0.join("public/blackbird-os");
         make_checkout(&os);
         let deep = t.0.join("public/toolkit/cli/crates");
         std::fs::create_dir_all(&deep).unwrap();
@@ -96,9 +96,9 @@ mod tests {
     #[test]
     fn env_variable_wins_and_is_validated() {
         let t = tmp("env");
-        let ws_os = t.0.join("public/opendap-os");
+        let ws_os = t.0.join("public/blackbird-os");
         make_checkout(&ws_os);
-        let other = t.0.join("elsewhere/opendap-os");
+        let other = t.0.join("elsewhere/blackbird-os");
         make_checkout(&other);
         let found = find_os_checkout(Some(other.to_str().unwrap()), &t.0).unwrap();
         assert_eq!(found, other);
