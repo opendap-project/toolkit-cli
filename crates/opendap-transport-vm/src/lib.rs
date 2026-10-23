@@ -1,8 +1,11 @@
 //! Virtual T1 adapter of the OpenDAP toolkit: wraps `build/dap-qemu.sh` and
-//! `build/dap-qmp.py` from an blackbird-os checkout. It manages a single
+//! `build/dap-qmp.py` from a blackbird-os checkout. It manages a single
 //! instance, `vm:default`, and implements the core's [`VmProvider`],
 //! [`VmBackend`], [`ScreenSource`] and [`InputSink`] ports, and the
 //! [`CheckoutProbe`] for `doctor`. POSIX hosts only.
+
+/// Environment variable that selects another qemu image to run (read by `build/dap-qemu.sh` too).
+pub const IMAGE_VAR: &str = "DAP_IMAGE";
 
 pub mod workspace;
 
@@ -97,8 +100,13 @@ impl VirtualT1 {
     pub fn qemu_log(&self) -> PathBuf {
         self.run_dir().join("qemu.log")
     }
+    /// The qemu image: `$DAP_IMAGE` when set (for example a derivative distribution's image, the same
+    /// variable `build/dap-qemu.sh` reads), otherwise the checkout's own Blackbird OS image.
     pub fn image(&self) -> PathBuf {
-        self.os_dir.join("image/mkosi.output/blackbird-os-qemu.raw")
+        match std::env::var_os(IMAGE_VAR) {
+            Some(v) if !v.is_empty() => PathBuf::from(v),
+            _ => self.os_dir.join("image/mkosi.output/blackbird-os-qemu.raw"),
+        }
     }
     pub fn dev_key(&self) -> PathBuf {
         self.os_dir.join("build/dev-ssh/id_ed25519")
@@ -418,7 +426,7 @@ mod tests {
         }
     }
 
-    /// An blackbird-os checkout with no image and nothing running.
+    /// A blackbird-os checkout with no image and nothing running.
     fn checkout(name: &str) -> (Tmp, VirtualT1) {
         let p = std::env::temp_dir().join(format!("opendap-vm-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&p);

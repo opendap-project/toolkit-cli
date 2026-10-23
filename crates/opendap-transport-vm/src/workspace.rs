@@ -6,13 +6,13 @@ use std::path::{Path, PathBuf};
 use opendap_model::Error;
 use opendap_model::error as codes;
 
-/// Environment variable that points at an blackbird-os checkout.
+/// Environment variable that points at a blackbird-os checkout.
 pub const OS_DIR_VAR: &str = "BLACKBIRD_OS_DIR";
 
 /// Where the blackbird-os checkout sits inside the workspace.
 pub const OS_IN_WORKSPACE: &str = "public/blackbird-os";
 
-/// A directory is an blackbird-os checkout when it has the virtual T1 runner.
+/// A directory is a blackbird-os checkout when it has the virtual T1 runner.
 pub fn is_os_checkout(dir: &Path) -> bool {
     dir.join("build/dap-qemu.sh").is_file()
 }
@@ -28,7 +28,7 @@ pub fn find_os_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, 
         } else {
             Err(Error::new(
                 &codes::WORKSPACE_NOT_FOUND,
-                format!("{OS_DIR_VAR}={v} is not an blackbird-os checkout (no build/dap-qemu.sh)"),
+                format!("{OS_DIR_VAR}={v} is not a blackbird-os checkout (no build/dap-qemu.sh)"),
             )
             .hint(format!(
                 "Point {OS_DIR_VAR} at the blackbird-os repository, or unset it."

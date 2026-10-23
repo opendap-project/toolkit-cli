@@ -46,7 +46,7 @@ opendap vm stop
 
 ### Virtual T1 backend
 
-The virtual T1 runs from an blackbird-os checkout through its `build/dap-qemu.sh` and `build/dap-qmp.py`. The CLI finds the checkout in `$BLACKBIRD_OS_DIR`, or by walking up from the current directory to the folder that contains `public/blackbird-os`. `DAP_SSH_PORT` and `DAP_VNC_DISPLAY` are honoured as in `dap-qemu.sh`. There is a single instance, `default`, addressed as `vm:default`.
+The virtual T1 runs from a blackbird-os checkout through its `build/dap-qemu.sh` and `build/dap-qmp.py`. The CLI finds the checkout in `$BLACKBIRD_OS_DIR`, or by walking up from the current directory to the folder that contains `public/blackbird-os`. `DAP_SSH_PORT`, `DAP_VNC_DISPLAY` and `DAP_IMAGE` (another qemu image, for example a custom ROM's) are honoured as in `dap-qemu.sh`. There is a single instance, `default`, addressed as `vm:default`.
 
 The image is built with `build/dap-image.sh qemu` in the blackbird-os checkout. While it is missing, `doctor` reports it and `vm start` fails with `vm.image_missing`.
 
