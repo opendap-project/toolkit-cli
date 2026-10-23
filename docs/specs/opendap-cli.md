@@ -139,7 +139,7 @@ Canonical form first, then the ADB-style shortcut where one exists.
 | Command | Binary | Replaces |
 |---|---|---|
 | `image build [--profile qemu\|oci\|t1]` | `opendap-image` | `blackbird-os/build/dap-image.sh` |
-| `vm start\|stop` (backend) | `opendap-image` | `blackbird-os/build/dap-qemu.sh`, `dap-qmp.py` |
+| `vm start\|stop` (backend) | `opendap-image` | virtual-devices `build/dap-qemu.sh`, `dap-qmp.py` |
 | `fab package <project>` | `opendap-fab` | `toolkit/hardware/tools/fab-package.sh` |
 | `export build` | `opendap-export` | `toolkit/hardware/tools/freecad-export.py` |
 | `security check` | `opendap-image` | `blackbird-os/build/security-check.py` |

@@ -1,5 +1,5 @@
-//! Locating the blackbird-os checkout that provides the virtual T1 backend
-//! (`build/dap-qemu.sh`, `build/dap-qmp.py`).
+//! Locating the checkouts a virtual device needs: virtual-devices, which runs it
+//! (`build/dap-qemu.sh`, `build/dap-qmp.py`), and blackbird-os, which builds its image.
 
 use std::path::{Path, PathBuf};
 
@@ -12,9 +12,56 @@ pub const OS_DIR_VAR: &str = "BLACKBIRD_OS_DIR";
 /// Where the blackbird-os checkout sits inside the workspace.
 pub const OS_IN_WORKSPACE: &str = "public/blackbird-os";
 
-/// A directory is a blackbird-os checkout when it has the virtual T1 runner.
+/// A directory is a blackbird-os checkout when it has the image builder.
 pub fn is_os_checkout(dir: &Path) -> bool {
+    dir.join("build/dap-image.sh").is_file()
+}
+
+/// Environment variable that points at a virtual-devices checkout.
+pub const VD_DIR_VAR: &str = "VIRTUAL_DEVICES_DIR";
+
+/// Where the virtual-devices checkout sits inside the workspace.
+pub const VD_IN_WORKSPACE: &str = "public/virtual-devices";
+
+/// A directory is a virtual-devices checkout when it has the runner.
+pub fn is_vd_checkout(dir: &Path) -> bool {
     dir.join("build/dap-qemu.sh").is_file()
+}
+
+/// `$VIRTUAL_DEVICES_DIR` when set, otherwise the workspace's `public/virtual-devices` above `cwd`.
+pub fn find_vd_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, Error> {
+    if let Some(v) = env_value.filter(|v| !v.is_empty()) {
+        let p = PathBuf::from(v);
+        let p = if p.is_relative() { cwd.join(p) } else { p };
+        return if is_vd_checkout(&p) {
+            Ok(p.canonicalize().unwrap_or(p))
+        } else {
+            Err(Error::new(
+                &codes::WORKSPACE_NOT_FOUND,
+                format!("{VD_DIR_VAR}={v} is not a virtual-devices checkout (no build/dap-qemu.sh)"),
+            )
+            .hint(format!("Point {VD_DIR_VAR} at the virtual-devices repository, or unset it.")))
+        };
+    }
+    for dir in cwd.ancestors() {
+        let candidate = dir.join(VD_IN_WORKSPACE);
+        if is_vd_checkout(&candidate) {
+            return Ok(candidate.canonicalize().unwrap_or(candidate));
+        }
+    }
+    Err(Error::new(
+        &codes::WORKSPACE_NOT_FOUND,
+        format!("no {VD_IN_WORKSPACE} found above {}", cwd.display()),
+    )
+    .fix("scripts/bootstrap.sh"))
+}
+
+/// Same as [`find_vd_checkout`], from the process environment and directory.
+pub fn vd_checkout() -> Result<PathBuf, Error> {
+    let cwd = std::env::current_dir().map_err(|e| {
+        Error::new(&codes::HOST_IO, format!("cannot read the current directory: {e}"))
+    })?;
+    find_vd_checkout(std::env::var(VD_DIR_VAR).ok().as_deref(), &cwd)
 }
 
 /// `$BLACKBIRD_OS_DIR` when set (it must be a checkout), otherwise walk up from
@@ -28,7 +75,7 @@ pub fn find_os_checkout(env_value: Option<&str>, cwd: &Path) -> Result<PathBuf, 
         } else {
             Err(Error::new(
                 &codes::WORKSPACE_NOT_FOUND,
-                format!("{OS_DIR_VAR}={v} is not a blackbird-os checkout (no build/dap-qemu.sh)"),
+                format!("{OS_DIR_VAR}={v} is not a blackbird-os checkout (no build/dap-image.sh)"),
             )
             .hint(format!(
                 "Point {OS_DIR_VAR} at the blackbird-os repository, or unset it."
@@ -79,7 +126,7 @@ mod tests {
 
     fn make_checkout(dir: &Path) {
         std::fs::create_dir_all(dir.join("build")).unwrap();
-        std::fs::write(dir.join("build/dap-qemu.sh"), "#!/bin/sh\n").unwrap();
+        std::fs::write(dir.join("build/dap-image.sh"), "#!/bin/sh\n").unwrap();
     }
 
     #[test]

@@ -15,8 +15,11 @@ Requirements for the `opendap` command-line tool. TK-001, TK-009, TK-010 and TK-
 | TK-009 | Every toolkit tool shall be agentic-first and human-friendly, and all of them shall share concepts, conventions and one domain model. | must | Confirmed |
 | TK-010 | Toolkit tools and development in general shall officially support only UNIX / POSIX systems. | must | Confirmed |
 | TK-011 | Toolkit tools shall be tested on macOS only. | must | Confirmed |
+| TK-012 | In a debug mode, the CLI shall show what a virtual device cannot emulate (for example the status LED and haptic feedback) as the device's software drives it, so it can be developed and tested without hardware. | must | Confirmed |
 
 ## Context
+
+- TK-012 (maintainers, 2026-10-23): for what the virtual T1 cannot emulate, such as the status LED or haptic feedback, the CLI in debug mode and the toolkit take over. The virtual board's adapters for those classes publish their state, and the CLI shows it (blackbird-os OS-033, [virtual T1 spec](https://github.com/opendap-project/blackbird-os/blob/main/docs/specs/virtual-t1.md)).
 
 - TK-002: ADB (Android Debug Bridge) is the reference for scope: shell, file transfer, installing and removing software, logs, port forwarding, screenshots and input, rebooting into recovery or flashing modes. The command set is not defined yet.
 - TK-009: references for CLI design suggested by the maintainers: Cloudflare's new `cf` CLI and Forge. Research: `docs/research/2026-10-agentic-cli-design.md` (in progress).

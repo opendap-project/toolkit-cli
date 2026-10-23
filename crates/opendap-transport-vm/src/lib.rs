@@ -1,5 +1,6 @@
 //! Virtual T1 adapter of the OpenDAP toolkit: wraps `build/dap-qemu.sh` and
-//! `build/dap-qmp.py` from a blackbird-os checkout. It manages a single
+//! `build/dap-qmp.py` from a virtual-devices checkout, with the image and
+//! development key of a blackbird-os checkout. It manages a single
 //! instance, `vm:default`, and implements the core's [`VmProvider`],
 //! [`VmBackend`], [`ScreenSource`] and [`InputSink`] ports, and the
 //! [`CheckoutProbe`] for `doctor`. POSIX hosts only.
@@ -63,30 +64,32 @@ impl VmProvider for LocalVms {
     }
 }
 
-/// The virtual T1 of one blackbird-os checkout.
+/// The virtual T1: run by a virtual-devices checkout, from a blackbird-os checkout's image.
 #[derive(Debug, Clone)]
 pub struct VirtualT1 {
     pub os_dir: PathBuf,
+    pub vd_dir: PathBuf,
 }
 
 impl VirtualT1 {
     pub fn locate() -> Result<Self, Error> {
         Ok(VirtualT1 {
             os_dir: workspace::os_checkout()?,
+            vd_dir: workspace::vd_checkout()?,
         })
     }
 
     pub fn qemu_script(&self) -> PathBuf {
-        self.os_dir.join("build/dap-qemu.sh")
+        self.vd_dir.join("build/dap-qemu.sh")
     }
     pub fn qmp_script(&self) -> PathBuf {
-        self.os_dir.join("build/dap-qmp.py")
+        self.vd_dir.join("build/dap-qmp.py")
     }
     pub fn image_script(&self) -> PathBuf {
         self.os_dir.join("build/dap-image.sh")
     }
     pub fn run_dir(&self) -> PathBuf {
-        self.os_dir.join("build/run")
+        self.vd_dir.join("build/run")
     }
     pub fn pid_file(&self) -> PathBuf {
         self.run_dir().join("qemu.pid")
@@ -123,7 +126,7 @@ impl VirtualT1 {
         Command::new("sh")
             .arg(self.qemu_script())
             .args(args)
-            .current_dir(&self.os_dir)
+            .current_dir(&self.vd_dir)
             .stdin(Stdio::null())
             .output()
             .map_err(|e| Error::new(&codes::HOST_IO, format!("cannot run dap-qemu.sh: {e}")))
@@ -135,7 +138,7 @@ impl VirtualT1 {
         let mut c = Command::new("sh");
         c.arg(self.qemu_script())
             .arg("ssh")
-            .current_dir(&self.os_dir);
+            .current_dir(&self.vd_dir);
         c
     }
 
@@ -313,7 +316,10 @@ pub struct CheckoutProbe;
 impl HostProbe for CheckoutProbe {
     fn check(&self) -> Vec<Finding> {
         match workspace::os_checkout() {
-            Ok(dir) => checkout_findings(&VirtualT1 { os_dir: dir }),
+            Ok(dir) => checkout_findings(&VirtualT1 {
+                os_dir: dir,
+                vd_dir: workspace::vd_checkout().unwrap_or_default(),
+            }),
             Err(e) => {
                 let skip = |id: &str, title: &str| {
                     finding(id, title, Status::Skip, "no blackbird-os checkout", None)
@@ -426,14 +432,17 @@ mod tests {
         }
     }
 
-    /// A blackbird-os checkout with no image and nothing running.
+    /// blackbird-os and virtual-devices checkouts (one folder) with no image and nothing running.
     fn checkout(name: &str) -> (Tmp, VirtualT1) {
         let p = std::env::temp_dir().join(format!("opendap-vm-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&p);
         std::fs::create_dir_all(p.join("build")).unwrap();
         std::fs::write(p.join("build/dap-qemu.sh"), "#!/bin/sh\n").unwrap();
+        std::fs::write(p.join("build/dap-image.sh"), "#!/bin/sh\n").unwrap();
+        let dir = p.canonicalize().unwrap();
         let vm = VirtualT1 {
-            os_dir: p.canonicalize().unwrap(),
+            os_dir: dir.clone(),
+            vd_dir: dir,
         };
         (Tmp(p), vm)
     }

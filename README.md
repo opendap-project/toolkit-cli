@@ -23,7 +23,7 @@ A first slice of the [CLI spec](docs/specs/opendap-cli.md) is implemented. It wo
 
 Every other command in the spec is not implemented yet.
 
-Known issue: `input send tap` fails with `transport.qmp_failed`, because QEMU rejects the absolute-pointer events that `dap-qmp.py tap` sends to the virtio multitouch device (`Input handler not found for event type abs`). The fix belongs in blackbird-os.
+`input send tap` goes through the virtual device's tablet, which the shell treats as one finger.
 
 ## Build
 
@@ -46,7 +46,7 @@ opendap vm stop
 
 ### Virtual T1 backend
 
-The virtual T1 runs from a blackbird-os checkout through its `build/dap-qemu.sh` and `build/dap-qmp.py`. The CLI finds the checkout in `$BLACKBIRD_OS_DIR`, or by walking up from the current directory to the folder that contains `public/blackbird-os`. `DAP_SSH_PORT`, `DAP_VNC_DISPLAY` and `DAP_IMAGE` (another qemu image, for example a custom ROM's) are honoured as in `dap-qemu.sh`. There is a single instance, `default`, addressed as `vm:default`.
+The virtual T1 runs from a virtual-devices checkout through its `build/dap-qemu.sh` and `build/dap-qmp.py`, with the image and development key of a blackbird-os checkout. The CLI finds them in `$VIRTUAL_DEVICES_DIR` and `$BLACKBIRD_OS_DIR`, or by walking up from the current directory to the folder that contains `public/blackbird-os`. `DAP_SSH_PORT`, `DAP_VNC_DISPLAY` and `DAP_IMAGE` (another qemu image, for example a custom ROM's) are honoured as in `dap-qemu.sh`. There is a single instance, `default`, addressed as `vm:default`.
 
 The image is built with `build/dap-image.sh qemu` in the blackbird-os checkout. While it is missing, `doctor` reports it and `vm start` fails with `vm.image_missing`.
 
@@ -72,7 +72,7 @@ The image is built with `build/dap-image.sh qemu` in the blackbird-os checkout. 
 |---|---|---|
 | `opendap-model` | Domain model | Types and schema IDs: devices, targets, virtual T1 instances, exec results, captures, input events, findings, error codes and errors as data |
 | `opendap-core` | Application core | Use cases (resolve a target, list devices, list, get, start and stop the virtual T1, exec, capture the screen, send input, doctor) written against ports: `VmProvider`, `VmBackend`, `DeviceTransport`, `ScreenSource`, `InputSink`, `HostProbe`, `Clock`. The `contract` feature exposes one test suite per port |
-| `opendap-transport-vm` | Adapter | The virtual T1 through the blackbird-os checkout (`dap-qemu.sh`, `dap-qmp.py`), discovery of that checkout, and its `doctor` checks |
+| `opendap-transport-vm` | Adapter | The virtual T1 through the virtual-devices checkout (`dap-qemu.sh`, `dap-qmp.py`) and the blackbird-os checkout (image, key), discovery of both, and their `doctor` checks |
 | `opendap-transport-ssh` | Adapter | Commands over SSH, each argument quoted for the remote shell |
 | `opendap-host` | Adapter | Program lookup, the system clock and the host's `doctor` checks (platform, QEMU, Lima, pre-commit) |
 | `opendap-cli-kit` | Interface | Conventions of the toolkit CLIs: output modes, the error envelope, exit codes, command metadata, agent detection |
