@@ -50,7 +50,8 @@ fn no_input_env_refuses_an_interactive_shell() {
 
 #[test]
 fn usage_errors_use_the_envelope_and_exit_2() {
-    let out = opendap(&["input", "send", "key", "home", "--json"], &[]);
+    // A tap needs pixels: a word where a number goes is a usage error.
+    let out = opendap(&["input", "send", "tap", "left", "0", "--json"], &[]);
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(json(&out)["error"]["code"], "input.invalid");
 }

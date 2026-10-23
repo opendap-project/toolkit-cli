@@ -54,5 +54,6 @@ pub struct VmInfo {
     pub endpoints: Endpoints,
     pub image: ImageInfo,
     pub console_log: String,
-    pub os_dir: String,
+    /// The virtual-devices checkout that runs it.
+    pub runner_dir: String,
 }

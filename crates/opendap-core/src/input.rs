@@ -25,7 +25,7 @@ pub fn send<S: InputSink>(
 
 #[cfg(test)]
 mod tests {
-    use opendap_model::Button;
+    use opendap_model::Role;
 
     use super::*;
     use crate::fake::FakeInput;
@@ -37,22 +37,22 @@ mod tests {
             name: "default".into(),
         };
         let key = InputEvent::Key {
-            button: Button::VolUp,
+            role: Role::from("volume-up"),
             hold_ms: 100,
         };
         assert!(matches!(
-            send(&sink, t.clone(), key, true).unwrap(),
+            send(&sink, t.clone(), key.clone(), true).unwrap(),
             Outcome::Plan(_)
         ));
         assert!(sink.sent.borrow().is_empty());
-        let Outcome::Done(sent) = send(&sink, t, key, false).unwrap() else {
+        let Outcome::Done(sent) = send(&sink, t, key.clone(), false).unwrap() else {
             panic!()
         };
         assert!(sent.changed);
         assert_eq!(*sink.sent.borrow(), [key]);
         assert_eq!(
             serde_json::to_value(sent.event).unwrap(),
-            serde_json::json!({"kind": "key", "button": "vol-up", "hold_ms": 100})
+            serde_json::json!({"kind": "key", "role": "volume-up", "hold_ms": 100})
         );
     }
 }

@@ -67,23 +67,23 @@ codes! {
         "No virtual T1 instance has that name.",
         "Run `opendap vm list`; the only instance is `default`.");
     VM_NOT_RUNNING = ("vm.not_running", exit::PRECONDITION, false,
-        "The virtual T1 is stopped or still booting.",
+        "The virtual device is stopped or still booting.",
         "Run `opendap vm start` (it waits for the boot to finish).");
     VM_IMAGE_MISSING = ("vm.image_missing", exit::PRECONDITION, true,
-        "The virtual T1 image has not been built, or is being rebuilt.",
-        "Build it with `build/dap-image.sh qemu` in the blackbird-os checkout, or wait for the running build.");
+        "The virtual device's image has not been built, or is being rebuilt.",
+        "A maintainer builds it with toolkit-image `odap-image build qemu`; or wait for the running build.");
     VM_START_FAILED = ("vm.start_failed", exit::FAILURE, true,
         "QEMU did not start.",
-        "Read build/run/qemu.log in the blackbird-os checkout and run `opendap doctor`.");
+        "Run `odap-vdev status` for its QEMU log, and `opendap doctor`.");
     VM_BOOT_TIMEOUT = ("vm.boot_timeout", exit::TIMEOUT, true,
-        "The virtual T1 started but SSH did not answer in time.",
-        "Check build/run/console.log, or retry with a longer --wait-timeout.");
+        "The virtual device started but SSH did not answer in time.",
+        "Check the console log (`odap-vdev status`), or retry with a longer --wait-timeout.");
     VM_STOP_TIMEOUT = ("vm.stop_timeout", exit::TIMEOUT, true,
         "QEMU did not exit in time after the stop request.",
         "Retry `opendap vm stop`.");
     WORKSPACE_NOT_FOUND = ("workspace.not_found", exit::PRECONDITION, false,
-        "The blackbird-os checkout that provides the virtual T1 was not found.",
-        "Run from inside the OpenDAP workspace, or set BLACKBIRD_OS_DIR to the blackbird-os checkout.");
+        "The virtual-devices checkout that runs virtual devices was not found.",
+        "Run from inside the OpenDAP workspace, or set ODAP_VIRTUAL_DEVICES_DIR to the virtual-devices checkout.");
     HOST_TOOL_MISSING = ("host.tool_missing", exit::PRECONDITION, false,
         "A host program the command needs is not installed.",
         "Run `opendap doctor` for the missing tool and how to install it.");

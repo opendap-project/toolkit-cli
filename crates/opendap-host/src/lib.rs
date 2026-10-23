@@ -11,7 +11,7 @@ use opendap_core::Clock;
 use opendap_model::Error;
 use opendap_model::error as codes;
 
-pub use probes::{HostPlatform, HostTools, Lima, PreCommit, Qemu};
+pub use probes::{HostPlatform, HostTools, Qemu};
 
 /// Find a program on PATH.
 pub fn which(program: &str) -> Option<PathBuf> {

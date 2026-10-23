@@ -1,4 +1,4 @@
-//! `doctor` probes for the host: platform, programs, QEMU, Lima, pre-commit.
+//! `doctor` probes for the host: platform, programs, QEMU.
 
 use std::path::Path;
 
@@ -163,70 +163,6 @@ impl HostProbe for Qemu {
     }
 }
 
-/// `vm.lima`: Lima and the image build VM. Only needed to build images.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Lima;
-
-impl HostProbe for Lima {
-    fn check(&self) -> Vec<Finding> {
-        let (id, title) = ("vm.lima", "Lima (image build VM)");
-        let Some(lima) = which("limactl") else {
-            return vec![finding(
-                id,
-                title,
-                Status::Warn,
-                "limactl is not on PATH; it is needed only to build Blackbird OS images",
-                Some(Fix {
-                    description: Some("Install Lima".into()),
-                    command: Some("brew install lima".into()),
-                }),
-            )];
-        };
-        let version = first_line(&lima, &["--version"]).unwrap_or_else(|| "version unknown".into());
-        let instance = first_line(
-            &lima,
-            &["list", "--format", "{{.Status}}", "blackbird-os-build"],
-        )
-        .filter(|s| !s.is_empty())
-        .map(|s| format!("build VM blackbird-os-build: {}", s.to_lowercase()))
-        .unwrap_or_else(|| {
-            "build VM blackbird-os-build not created yet (dap-image.sh creates it)".into()
-        });
-        vec![finding(
-            id,
-            title,
-            Status::Ok,
-            format!("{version}; {instance}"),
-            None,
-        )]
-    }
-}
-
-/// `tools.pre_commit`: every repository runs pre-commit.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct PreCommit;
-
-impl HostProbe for PreCommit {
-    fn check(&self) -> Vec<Finding> {
-        let (id, title) = ("tools.pre_commit", "pre-commit");
-        vec![
-            match which("pre-commit").and_then(|p| first_line(&p, &["--version"])) {
-                Some(v) => finding(id, title, Status::Ok, v, None),
-                None => finding(
-                    id,
-                    title,
-                    Status::Error,
-                    "pre-commit is not on PATH; every repository runs it",
-                    Some(Fix {
-                        description: Some("Install the host tools".into()),
-                        command: Some("public/toolkit/host/setup.sh".into()),
-                    }),
-                ),
-            },
-        ]
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use opendap_core::contract;
@@ -235,7 +171,7 @@ mod tests {
 
     #[test]
     fn every_host_probe_passes_the_contract() {
-        let probes: [&dyn HostProbe; 5] = [&HostPlatform, &HostTools, &Qemu, &Lima, &PreCommit];
+        let probes: [&dyn HostProbe; 3] = [&HostPlatform, &HostTools, &Qemu];
         for p in probes {
             contract::host_probe(p);
         }
@@ -246,7 +182,5 @@ mod tests {
         assert_eq!(HostPlatform.check()[0].id, "host.platform");
         assert_eq!(HostTools.check()[0].id, "host.tools");
         assert_eq!(Qemu.check()[0].id, "vm.qemu");
-        assert_eq!(Lima.check()[0].id, "vm.lima");
-        assert_eq!(PreCommit.check()[0].id, "tools.pre_commit");
     }
 }

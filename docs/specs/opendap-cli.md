@@ -5,7 +5,7 @@
 - **Requirements:** TK-002 to TK-011
 - **Research:** [`../research/2026-10-agentic-cli-design.md`](../research/2026-10-agentic-cli-design.md)
 
-The ADB-style tool for everything an advanced user, a developer or an agent does with a T1, real or virtual. It is also the front door of every toolkit tool.
+OpenDAP's adb: the tool for what an advanced user, a package developer or an agent does with an OpenDAP device, real or virtual (the T1 first). It sits next to OpenDAP Desktop on the user's side. It is not the Developer Toolkit: the platform's maintainers have their own tools, in the toolkit repositories ([RFC 0008](https://github.com/opendap-project/rfcs/blob/main/text/0008-repository-restructure.md)). Package developers use the SDK and the emulator through it, but do not develop them.
 
 ## 1. Principles
 
@@ -16,7 +16,7 @@ The ADB-style tool for everything an advanced user, a developer or an agent does
 
 ## 2. Shared conventions
 
-Every toolkit tool adopts §8 of the research report as written: grammar, global flags, output, errors and exit codes, interactivity, targets, configuration, authentication, logging, help for agents, versioning and install. In short:
+The CLI adopts §8 of the research report as written: grammar, global flags, output, errors and exit codes, interactivity, targets, configuration, authentication, logging, help for agents, versioning and install. In short:
 
 - Grammar `opendap <noun> <verb> [subject] [--flags]`, with a closed verb vocabulary. ADB-style shortcuts (`shell`, `push`, `pull`, `logs`, `devices`, `flash`, `screenshot`) are documented aliases of canonical commands.
 - Global flags: `-t/--target`, `--context`, `-o/--output human|json|ndjson|plain` (`--json`), `--fields`, `-n/--dry-run`, `-f/--force` (the only way to skip confirmations), `--no-input`, `-q`/`-v`, `--log-format`, `--color`, `--config`, `--offline`, `--timeout`.
@@ -27,13 +27,13 @@ Every toolkit tool adopts §8 of the research report as written: grammar, global
 
 ## 3. Architecture
 
-- **One front door, external plugins.** `opendap` is a single Rust binary. Heavier toolkit tools ship as `opendap-<tool>` binaries and run as external subcommands (the cargo and git pattern): `opendap image build` → `opendap-image build`. The device CLI stays small, and every tool shares one grammar and one `cli search`.
+- **One binary, user-side plugins.** `opendap` is a single Rust binary. Extensions for its own audience (for example a HAT's user tools) ship as `opendap-<tool>` binaries and run as external subcommands (the cargo and git pattern). Maintainer tooling is not a plugin: it lives in the toolkit repositories as its own tools (`odap-image`, `odap-fab`…).
 - **Crates:** `opendap-model` (types and schemas), `opendap-cli-kit` (flags, output, errors, targets, config, logging, agent detection, help, schema, MCP, `doctor` framework, self-update), and one crate per binary. Use cases live in `opendap-core` and its adapter crates, layered as the [Rust crate architecture](https://github.com/opendap-project/system/blob/main/docs/specs/rust-crate-architecture.md) sets out.
 - **Transports in v0:**
   - SSH, over the network or over USB networking from the main USB-C in gadget mode.
   - Serial console, over the same USB-C path (BRD-039).
   - rockusb, for MaskROM flashing.
-  - QMP, VNC and SSH, for the virtual T1.
+  - The virtual devices of a virtual-devices checkout, through its tool `odap-vdev` (status as JSON, lifecycle, management link, screen and input).
 - **No host daemon in v0.** Each invocation talks to the device directly.
 
 ## 4. Installer
@@ -128,22 +128,23 @@ Canonical form first, then the ADB-style shortcut where one exists.
 
 | Command | What it does |
 |---|---|
-| `doctor` | Checks the host: binary and plugins, USB permissions, transports, SSH keys, QEMU, Lima, KiCad, FreeCAD, Blender, pre-commit and toolkit versions. Every finding has a severity and a fix, plus `--json` and `--report` |
+| `doctor` | Checks the host for the CLI's own work: binary and plugins, USB permissions, transports, SSH keys, QEMU and the virtual-devices checkout for the emulator. Every finding has a severity and a fix, plus `--json` and `--report`. Maintainer tools (Lima, KiCad, FreeCAD, Blender, pre-commit) are toolkit-host's |
 | `self update` / `self uninstall` / `self alias` | Same behavior as the installer, using its receipt |
 | `cli search "<task>"`, `schema [<command>]`, `tools`, `help errors [<code>]` | Discovery for agents and humans, generated from command metadata |
 | `mcp serve` | MCP server over stdio, with a small tool set: search, describe, run, plus `device_list` and `doctor` |
 | `version`, `completion <shell>` | Version details (`--json`) and shell completions |
 
-### Plugins (existing toolkit scripts, to be migrated)
+### Maintainer tools are not CLI commands
 
-| Command | Binary | Replaces |
+What the platform's maintainers use lives in the toolkit repositories, as tools of their own ([RFC 0008](https://github.com/opendap-project/rfcs/blob/main/text/0008-repository-restructure.md)):
+
+| Task | Tool | Repository |
 |---|---|---|
-| `image build [--profile qemu\|oci\|t1]` | `opendap-image` | `blackbird-os/build/dap-image.sh` |
-| `vm start\|stop` (backend) | `opendap-image` | virtual-devices `build/dap-qemu.sh`, `dap-qmp.py` |
-| `fab package <project>` | `opendap-fab` | `toolkit/hardware/tools/fab-package.sh` |
-| `export build` | `opendap-export` | `toolkit/hardware/tools/freecad-export.py` |
-| `security check` | `opendap-image` | `blackbird-os/build/security-check.py` |
-| `verify …` | to be defined | verification instrumentation (in progress) |
+| Build images, the sysroot, cross-build, deploy a development extension, security check | `odap-image`, `odap-sysroot`, `odap-cross`, `odap-deploy`, `odap-security-check` | toolkit-image |
+| Fab packages, mechanical exports | `fab-package.sh`, `freecad-export.py` | toolkit-hardware |
+| Verification | in progress | toolkit-verify |
+
+The emulator is run by virtual-devices' `odap-vdev`; the CLI targets its devices as `vm:<name>`.
 
 ## 6. Release
 
@@ -152,7 +153,7 @@ Built locally (no CI) for macOS arm64 and x86_64 and Linux arm64 and x86_64 (sta
 ## 7. Decisions (2026-10-22)
 
 1. Piped stdout defaults to JSON (agent-first, like `cf`); humans pass `-o plain` for greppable text.
-2. One front door, `opendap`, with external `opendap-<tool>` plugins.
+2. One binary, `opendap`, with external `opendap-<tool>` plugins for its own audience; maintainer tools stay in the toolkit (amended by RFC 0008).
 3. Every destructive operation needs an explicit target, even when only one device is present.
 4. v0 has no dedicated device-side agent: SSH and standard tools on the device.
 5. No Apple Developer ID for now; revisit for browser downloads, a `.pkg` or a Homebrew cask.

@@ -1,8 +1,8 @@
-# Toolkit CLI
+# CLI
 
-The `opendap` command-line tool: an ADB-style, agentic-first CLI for the T1 and Blackbird OS, written in Rust.
+The `opendap` command-line tool: OpenDAP's adb, agentic-first, for advanced users and package developers working with OpenDAP devices, real or virtual. Written in Rust; it sits next to OpenDAP Desktop, not in the Developer Toolkit.
 
-Part of the [OpenDAP](https://github.com/opendap-project) Developer Toolkit, which lives in the workspace under `public/toolkit/` as one repository per tool domain.
+Part of [OpenDAP](https://github.com/opendap-project).
 
 ## Status
 
@@ -11,7 +11,7 @@ A first slice of the [CLI spec](docs/specs/opendap-cli.md) is implemented. It wo
 | Command | What it does |
 |---|---|
 | `version` | Version, commit, build target and model schema IDs |
-| `doctor` | Checks the host platform, `ssh` and `python3`, QEMU, Lima, the blackbird-os checkout, the development SSH key, the virtual T1 image and pre-commit. Exits 1 when any check is an error |
+| `doctor` | Checks the host platform, `ssh` and `python3`, QEMU, the virtual-devices checkout, the development SSH key and the virtual device's image. Exits 1 when any check is an error |
 | `schema [<command>]` | Command metadata as JSON: arguments, flags, category, idempotency, output schema, error codes, examples |
 | `vm list`, `vm get [<name>]` | The virtual T1 instance, its state (`stopped`, `booting`, `running`) and endpoints |
 | `vm start [<name>]`, `vm stop [<name>]` | Boots the virtual T1 and waits until SSH answers (`--detach` returns at once, `--wait-timeout` defaults to `180s`); stops it. Both are idempotent |
@@ -46,9 +46,9 @@ opendap vm stop
 
 ### Virtual T1 backend
 
-The virtual T1 runs from a virtual-devices checkout through its `build/dap-qemu.sh` and `build/dap-qmp.py`, with the image and development key of a blackbird-os checkout. The CLI finds them in `$VIRTUAL_DEVICES_DIR` and `$BLACKBIRD_OS_DIR`, or by walking up from the current directory to the folder that contains `public/blackbird-os`. `DAP_SSH_PORT`, `DAP_VNC_DISPLAY` and `DAP_IMAGE` (another qemu image, for example a custom ROM's) are honoured as in `dap-qemu.sh`. There is a single instance, `default`, addressed as `vm:default`.
+Virtual devices run from a virtual-devices checkout, through its tool `odap-vdev` (status as JSON, lifecycle, management link, screen and input). The CLI finds the checkout in `$ODAP_VIRTUAL_DEVICES_DIR`, or through the workspace's `repos.tsv` above the current directory.
 
-The image is built with `build/dap-image.sh qemu` in the blackbird-os checkout. While it is missing, `doctor` reports it and `vm start` fails with `vm.image_missing`.
+The image is built by maintainers with toolkit-image `odap-image build qemu` (releases will come through `opendap image pull`). While it is missing, `doctor` reports it and `vm start` fails with `vm.image_missing`.
 
 ### Shared conventions
 
@@ -72,9 +72,9 @@ The image is built with `build/dap-image.sh qemu` in the blackbird-os checkout. 
 |---|---|---|
 | `opendap-model` | Domain model | Types and schema IDs: devices, targets, virtual T1 instances, exec results, captures, input events, findings, error codes and errors as data |
 | `opendap-core` | Application core | Use cases (resolve a target, list devices, list, get, start and stop the virtual T1, exec, capture the screen, send input, doctor) written against ports: `VmProvider`, `VmBackend`, `DeviceTransport`, `ScreenSource`, `InputSink`, `HostProbe`, `Clock`. The `contract` feature exposes one test suite per port |
-| `opendap-transport-vm` | Adapter | The virtual T1 through the virtual-devices checkout (`dap-qemu.sh`, `dap-qmp.py`) and the blackbird-os checkout (image, key), discovery of both, and their `doctor` checks |
+| `opendap-transport-vm` | Adapter | Virtual devices through virtual-devices' `odap-vdev`, discovery of its checkout, and their `doctor` checks |
 | `opendap-transport-ssh` | Adapter | Commands over SSH, each argument quoted for the remote shell |
-| `opendap-host` | Adapter | Program lookup, the system clock and the host's `doctor` checks (platform, QEMU, Lima, pre-commit) |
+| `opendap-host` | Adapter | Program lookup, the system clock and the host's `doctor` checks (platform, programs, QEMU) |
 | `opendap-cli-kit` | Interface | Conventions of the toolkit CLIs: output modes, the error envelope, exit codes, command metadata, agent detection |
 | `opendap-cli` | Interface | The `opendap` binary: the command tree, command metadata (`src/meta.rs`), wiring of the adapters into the core, rendering |
 

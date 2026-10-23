@@ -1,6 +1,6 @@
 [package]
 name = "opendap-core"
-description = "Application core of the OpenDAP toolkit: use cases written against ports (traits) that adapter crates implement"
+description = "Application core of the opendap CLI (and OpenDAP Desktop): use cases written against ports (traits) that adapter crates implement"
 license = "MPL-2.0"
 version.workspace = true
 edition.workspace = true

@@ -16,7 +16,7 @@ pub use device::{Device, DeviceList, DeviceState, Mode, Target, Transport, Warni
 pub use error::{Error, ErrorBody, ErrorCode, ErrorDocument, Fix};
 pub use exec::ExecResult;
 pub use finding::{DoctorReport, Finding, Status, Summary};
-pub use input::{Button, InputEvent, InputSent};
+pub use input::{InputEvent, InputSent, Role};
 pub use screen::ScreenCapture;
 pub use vm::{Endpoints, ImageInfo, VmInfo, VmState};
 

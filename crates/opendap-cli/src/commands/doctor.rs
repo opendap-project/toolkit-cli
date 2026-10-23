@@ -2,7 +2,7 @@
 
 use opendap_cli_kit::CliError;
 use opendap_core::HostProbe;
-use opendap_host::{HostPlatform, HostTools, Lima, PreCommit, Qemu};
+use opendap_host::{HostPlatform, HostTools, Qemu};
 use opendap_model::{DoctorReport, Status};
 use opendap_transport_vm::CheckoutProbe;
 
@@ -39,14 +39,7 @@ fn human(r: &DoctorReport) -> String {
 }
 
 pub fn run(ctx: &Ctx) -> Result<u8, CliError> {
-    let probes: [&dyn HostProbe; 6] = [
-        &HostPlatform,
-        &HostTools,
-        &Qemu,
-        &Lima,
-        &CheckoutProbe,
-        &PreCommit,
-    ];
+    let probes: [&dyn HostProbe; 4] = [&HostPlatform, &HostTools, &Qemu, &CheckoutProbe];
     let report = opendap_core::doctor::run(&probes);
     ctx.out.emit(&report, || human(&report));
     Ok(if report.ok { 0 } else { 1 })

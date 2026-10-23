@@ -5,7 +5,7 @@
 //! The suites panic on the first broken rule, like `assert!`.
 
 use opendap_model::vm::DEFAULT_NAME;
-use opendap_model::{Button, InputEvent, Status, Transport, VmState};
+use opendap_model::{InputEvent, Role, Status, Transport, VmState};
 
 use crate::ports::{DeviceTransport, Exit, HostProbe, InputSink, ScreenSource, VmBackend};
 use crate::screen::png_size;
@@ -92,12 +92,12 @@ pub fn screen_source<S: ScreenSource>(s: &S, path: &str) {
 
 /// [`InputSink`]: every event can be described. Sends nothing.
 pub fn input_sink<S: InputSink>(s: &S) {
-    for button in Button::ALL {
+    for role in Role::COMMON {
         let d = s.describe(&InputEvent::Key {
-            button,
+            role: Role::from(role),
             hold_ms: 100,
         });
-        assert!(!d.is_empty(), "{}", button.as_str());
+        assert!(!d.is_empty(), "{role}");
     }
     assert!(!s.describe(&InputEvent::Tap { x: 0, y: 0 }).is_empty());
 }

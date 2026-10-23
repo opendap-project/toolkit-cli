@@ -148,7 +148,7 @@ pub static COMMANDS: &[CommandMeta] = &[
     },
     CommandMeta {
         path: "input send key",
-        summary: "Press a T1 button: action, vol-up, vol-down or power",
+        summary: "Press a control by its role (the T1: action, volume-up, volume-down, main)",
         category: Category::Mutate,
         idempotent: false,
         targeted: true,
@@ -164,13 +164,13 @@ pub static COMMANDS: &[CommandMeta] = &[
             "transport.qmp_failed",
         ],
         examples: &[
-            "opendap input send key vol-up",
-            "opendap input send key power --hold-ms 3000 --json",
+            "opendap input send key volume-up",
+            "opendap input send key main --hold-ms 3000 --json",
         ],
     },
     CommandMeta {
         path: "input send tap",
-        summary: "Touch the display at a pixel (320 × 480 portrait)",
+        summary: "Touch the display at a pixel",
         category: Category::Mutate,
         idempotent: false,
         targeted: true,

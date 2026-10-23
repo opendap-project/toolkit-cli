@@ -1,12 +1,8 @@
-//! Virtual T1 adapter of the OpenDAP toolkit: wraps `build/dap-qemu.sh` and
-//! `build/dap-qmp.py` from a virtual-devices checkout, with the image and
-//! development key of a blackbird-os checkout. It manages a single
-//! instance, `vm:default`, and implements the core's [`VmProvider`],
-//! [`VmBackend`], [`ScreenSource`] and [`InputSink`] ports, and the
-//! [`CheckoutProbe`] for `doctor`. POSIX hosts only.
-
-/// Environment variable that selects another qemu image to run (read by `build/dap-qemu.sh` too).
-pub const IMAGE_VAR: &str = "DAP_IMAGE";
+//! Virtual device adapter of the `opendap` CLI: drives the virtual devices of a virtual-devices
+//! checkout through its documented tool, `odap-vdev` (status as JSON, lifecycle, the management
+//! link, screen and input), never through its files (RFC 0008). It manages one instance,
+//! `vm:default`, and implements the core's [`VmProvider`], [`VmBackend`], [`ScreenSource`] and
+//! [`InputSink`] ports, and the [`CheckoutProbe`] for `doctor`. POSIX hosts only.
 
 pub mod workspace;
 
@@ -25,16 +21,14 @@ use opendap_model::vm::DEFAULT_NAME;
 use opendap_model::{
     Endpoints, Error, Finding, Fix, ImageInfo, InputEvent, Status, Transport, VmInfo,
 };
+use serde_json::Value;
 
-/// The program that opens SSH sessions to the virtual T1, for plans.
-pub const SSH_LAUNCHER: &str = "dap-qemu.sh";
+/// The program that opens SSH sessions to the virtual device, for plans.
+pub const SSH_LAUNCHER: &str = "odap-vdev";
 
-fn env_num<T: std::str::FromStr>(var: &str, default: T) -> T {
-    std::env::var(var)
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(default)
-}
+/// How to get an image when there is none: a maintainer builds one, a package developer will pull
+/// a release (`opendap image pull`, not built yet).
+pub const IMAGE_HINT: &str = "toolkit-image odap-image build qemu";
 
 /// Last lines of a log file, for error details.
 pub fn tail(path: &Path, lines: usize) -> String {
@@ -43,158 +37,128 @@ pub fn tail(path: &Path, lines: usize) -> String {
     all[all.len().saturating_sub(lines)..].join("\n")
 }
 
-/// Whether an image build is running (`dap-image.sh`).
+/// Whether an image build is running (toolkit-image `odap-image`).
 pub fn image_build_running() -> bool {
     Command::new("pgrep")
-        .args(["-f", "dap-image.sh"])
+        .args(["-f", "odap-image build"])
         .stdout(Stdio::null())
         .status()
         .is_ok_and(|s| s.success())
 }
 
-/// Finds the blackbird-os checkout from `$BLACKBIRD_OS_DIR` or the current
-/// directory (see [`workspace`]).
+/// Finds the virtual-devices checkout from `$ODAP_VIRTUAL_DEVICES_DIR` or the workspace.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LocalVms;
 
 impl VmProvider for LocalVms {
-    type Vm = VirtualT1;
-    fn locate(&self) -> Result<VirtualT1, Error> {
-        VirtualT1::locate()
+    type Vm = VirtualDevice;
+    fn locate(&self) -> Result<VirtualDevice, Error> {
+        VirtualDevice::locate()
     }
 }
 
-/// The virtual T1: run by a virtual-devices checkout, from a blackbird-os checkout's image.
+/// A virtual device, run by a virtual-devices checkout.
 #[derive(Debug, Clone)]
-pub struct VirtualT1 {
-    pub os_dir: PathBuf,
+pub struct VirtualDevice {
     pub vd_dir: PathBuf,
 }
 
-impl VirtualT1 {
+impl VirtualDevice {
     pub fn locate() -> Result<Self, Error> {
-        Ok(VirtualT1 {
-            os_dir: workspace::os_checkout()?,
+        Ok(VirtualDevice {
             vd_dir: workspace::vd_checkout()?,
         })
     }
 
-    pub fn qemu_script(&self) -> PathBuf {
-        self.vd_dir.join("build/dap-qemu.sh")
-    }
-    pub fn qmp_script(&self) -> PathBuf {
-        self.vd_dir.join("build/dap-qmp.py")
-    }
-    pub fn image_script(&self) -> PathBuf {
-        self.os_dir.join("build/dap-image.sh")
-    }
-    pub fn run_dir(&self) -> PathBuf {
-        self.vd_dir.join("build/run")
-    }
-    pub fn pid_file(&self) -> PathBuf {
-        self.run_dir().join("qemu.pid")
-    }
-    pub fn qmp_socket(&self) -> PathBuf {
-        self.run_dir().join("qmp.sock")
-    }
-    pub fn console_log(&self) -> PathBuf {
-        self.run_dir().join("console.log")
-    }
-    pub fn qemu_log(&self) -> PathBuf {
-        self.run_dir().join("qemu.log")
-    }
-    /// The qemu image: `$DAP_IMAGE` when set (for example a derivative distribution's image, the same
-    /// variable `build/dap-qemu.sh` reads), otherwise the checkout's own Blackbird OS image.
-    pub fn image(&self) -> PathBuf {
-        match std::env::var_os(IMAGE_VAR) {
-            Some(v) if !v.is_empty() => PathBuf::from(v),
-            _ => self.os_dir.join("image/mkosi.output/blackbird-os-qemu.raw"),
-        }
-    }
-    pub fn dev_key(&self) -> PathBuf {
-        self.os_dir.join("build/dev-ssh/id_ed25519")
-    }
-    pub fn ssh_port(&self) -> u16 {
-        env_num("DAP_SSH_PORT", 2222)
-    }
-    pub fn vnc_port(&self) -> u16 {
-        5900 + env_num::<u16>("DAP_VNC_DISPLAY", 0)
+    pub fn tool(&self) -> PathBuf {
+        self.vd_dir.join("bin/odap-vdev")
     }
 
-    /// `sh build/dap-qemu.sh <args…>` with stdin closed and output captured.
-    pub fn run_qemu_script(&self, args: &[&str]) -> Result<Output, Error> {
-        Command::new("sh")
-            .arg(self.qemu_script())
+    fn run(&self, args: &[&str]) -> Result<Output, Error> {
+        require_tool("python3", "runs odap-vdev")?;
+        Command::new(self.tool())
             .args(args)
-            .current_dir(&self.vd_dir)
             .stdin(Stdio::null())
             .output()
-            .map_err(|e| Error::new(&codes::HOST_IO, format!("cannot run dap-qemu.sh: {e}")))
+            .map_err(|e| Error::new(&codes::HOST_IO, format!("cannot run odap-vdev: {e}")))
     }
 
-    /// The `dap-qemu.sh ssh` command line, without the remote command. Feed it
-    /// to `opendap_transport_ssh::SshExec`.
+    /// `odap-vdev status --json`, the documented state and endpoints.
+    pub fn status(&self) -> Value {
+        self.run(&["status", "--json"])
+            .ok()
+            .filter(|o| o.status.success())
+            .and_then(|o| serde_json::from_slice(&o.stdout).ok())
+            .unwrap_or(Value::Null)
+    }
+
+    fn status_str(st: &Value, path: &[&str]) -> String {
+        let mut v = st;
+        for p in path {
+            v = &v[*p];
+        }
+        v.as_str().unwrap_or_default().to_string()
+    }
+
+    fn ssh_port(st: &Value) -> u16 {
+        Self::status_str(st, &["endpoints", "ssh"])
+            .rsplit(':')
+            .next()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(2222)
+    }
+
+    /// `odap-vdev ssh --`, without the remote command. Feed it to `opendap_transport_ssh::SshExec`.
     pub fn ssh_command(&self) -> Command {
-        let mut c = Command::new("sh");
-        c.arg(self.qemu_script())
-            .arg("ssh")
-            .current_dir(&self.vd_dir);
+        let mut c = Command::new(self.tool());
+        c.args(["ssh", "--"]);
         c
     }
 
-    /// `python3 build/dap-qmp.py <args…>`; its stdout on success.
-    pub fn qmp(&self, args: &[String]) -> Result<String, Error> {
-        let python = require_tool("python3", "drives QMP through dap-qmp.py")?;
-        let out = Command::new(python)
-            .arg(self.qmp_script())
-            .args(args)
-            .stdin(Stdio::null())
-            .output()
-            .map_err(|e| Error::new(&codes::HOST_IO, format!("cannot run dap-qmp.py: {e}")))?;
+    fn checked(&self, args: &[&str]) -> Result<String, Error> {
+        let out = self.run(args)?;
         if out.status.success() {
             Ok(String::from_utf8_lossy(&out.stdout).into_owned())
         } else {
             let err = String::from_utf8_lossy(&out.stderr);
             let last = err.lines().last().unwrap_or("no output").trim().to_string();
-            Err(Error::new(
-                &codes::TRANSPORT_QMP_FAILED,
-                format!("dap-qmp.py {}: {last}", args[0]),
-            )
-            .details(serde_json::json!({ "stderr": err })))
+            // odap-vdev exits 2 on a usage or data error: a role or pixel the device does not have.
+            let code = if out.status.code() == Some(2) {
+                &codes::INPUT_INVALID
+            } else {
+                &codes::TRANSPORT_QMP_FAILED
+            };
+            Err(Error::new(code, last).details(serde_json::json!({ "command": format!("odap-vdev {}", args.join(" ")), "stderr": err })))
         }
     }
 
-    fn qmp_args(event: &InputEvent) -> Vec<String> {
-        match *event {
-            InputEvent::Key { button, hold_ms } => {
-                vec!["press".into(), button.as_str().into(), hold_ms.to_string()]
+    fn input_args(event: &InputEvent) -> Vec<String> {
+        match event {
+            InputEvent::Key { role, hold_ms } => {
+                vec![
+                    "input".into(),
+                    "press".into(),
+                    role.as_str().into(),
+                    "--hold".into(),
+                    hold_ms.to_string(),
+                ]
             }
-            InputEvent::Tap { x, y } => vec!["tap".into(), x.to_string(), y.to_string()],
+            InputEvent::Tap { x, y } => {
+                vec!["input".into(), "tap".into(), x.to_string(), y.to_string()]
+            }
         }
     }
 }
 
-impl VmBackend for VirtualT1 {
-    /// The QEMU PID, when the PID file names a live QEMU process.
+impl VmBackend for VirtualDevice {
     fn pid(&self) -> Option<u32> {
-        let pid: u32 = std::fs::read_to_string(self.pid_file())
-            .ok()?
-            .trim()
-            .parse()
-            .ok()?;
-        let out = Command::new("ps")
-            .args(["-p", &pid.to_string(), "-o", "comm="])
-            .output()
-            .ok()?;
-        let comm = String::from_utf8_lossy(&out.stdout);
-        (out.status.success() && comm.contains("qemu")).then_some(pid)
+        self.status()["pid"].as_u64().map(|p| p as u32)
     }
 
-    /// Whether sshd in the guest answers with its banner. QEMU's user-mode
-    /// network accepts the TCP connection before the guest is up, so a
-    /// successful connect alone proves nothing.
+    /// Whether sshd in the guest answers with its banner. QEMU's user-mode network accepts the TCP
+    /// connection before the guest is up, so a successful connect alone proves nothing.
     fn ssh_ready(&self) -> bool {
-        let addr = SocketAddr::from(([127, 0, 0, 1], self.ssh_port()));
+        let addr = SocketAddr::from(([127, 0, 0, 1], Self::ssh_port(&self.status())));
         let Ok(mut s) = TcpStream::connect_timeout(&addr, Duration::from_secs(1)) else {
             return false;
         };
@@ -204,40 +168,40 @@ impl VmBackend for VirtualT1 {
     }
 
     fn info(&self) -> VmInfo {
-        let pid = self.pid();
+        let st = self.status();
+        let pid = st["pid"].as_u64().map(|p| p as u32);
         let state = opendap_core::vm::state_of(pid, || self.ssh_ready());
-        let image = self.image();
-        let meta = std::fs::metadata(&image).ok();
+        let image = Self::status_str(&st, &["image", "path"]);
         VmInfo {
             id: format!("vm:{DEFAULT_NAME}"),
             name: DEFAULT_NAME.into(),
             state,
             pid,
             endpoints: Endpoints {
-                ssh: self.ssh_endpoint(),
-                vnc: format!("127.0.0.1:{}", self.vnc_port()),
-                qmp: self.qmp_socket().display().to_string(),
+                ssh: Self::status_str(&st, &["endpoints", "ssh"]),
+                vnc: Self::status_str(&st, &["endpoints", "vnc"]),
+                qmp: Self::status_str(&st, &["endpoints", "qmp"]),
             },
             image: ImageInfo {
-                path: image.display().to_string(),
-                present: meta.is_some(),
-                bytes: meta.map(|m| m.len()),
+                bytes: std::fs::metadata(&image).ok().map(|m| m.len()),
+                present: st["image"]["present"].as_bool().unwrap_or(false),
+                path: image,
             },
-            console_log: self.console_log().display().to_string(),
-            os_dir: self.os_dir.display().to_string(),
+            console_log: Self::status_str(&st, &["console_log"]),
+            runner_dir: self.vd_dir.display().to_string(),
         }
     }
 
     fn ssh_endpoint(&self) -> String {
-        format!("127.0.0.1:{}", self.ssh_port())
+        Self::status_str(&self.status(), &["endpoints", "ssh"])
     }
 
     fn image_present(&self) -> bool {
-        self.image().is_file()
+        self.status()["image"]["present"].as_bool().unwrap_or(false)
     }
 
     fn image_path(&self) -> String {
-        self.image().display().to_string()
+        Self::status_str(&self.status(), &["image", "path"])
     }
 
     fn image_build_running(&self) -> bool {
@@ -245,27 +209,28 @@ impl VmBackend for VirtualT1 {
     }
 
     fn image_build_command(&self) -> String {
-        format!("sh {} qemu", self.image_script().display())
+        IMAGE_HINT.into()
     }
 
     fn start_command(&self) -> String {
-        format!("sh {} start", self.qemu_script().display())
+        format!("{} start", self.tool().display())
     }
 
     fn stop_command(&self) -> String {
-        format!("sh {} stop", self.qemu_script().display())
+        format!("{} stop", self.tool().display())
     }
 
     fn launch(&self) -> Result<(), Error> {
-        require_tool("qemu-system-aarch64", "runs the virtual T1")?;
-        require_tool("qemu-img", "creates the virtual T1 disk")?;
-        let out = self.run_qemu_script(&["start"])?;
+        require_tool("qemu-system-aarch64", "runs the virtual device")?;
+        require_tool("qemu-img", "creates the virtual device's disk")?;
+        let out = self.run(&["start"])?;
         if !out.status.success() || self.pid().is_none() {
+            let st = self.status();
             return Err(
-                Error::new(&codes::VM_START_FAILED, "dap-qemu.sh start failed").details(
+                Error::new(&codes::VM_START_FAILED, "odap-vdev start failed").details(
                     serde_json::json!({
                         "stderr": String::from_utf8_lossy(&out.stderr),
-                        "qemu_log": tail(&self.qemu_log(), 20),
+                        "qemu_log": tail(Path::new(&Self::status_str(&st, &["qemu_log"])), 20),
                     }),
                 ),
             );
@@ -274,87 +239,90 @@ impl VmBackend for VirtualT1 {
     }
 
     fn request_stop(&self) -> Result<(), Error> {
-        self.run_qemu_script(&["stop"]).map(|_| ())
+        self.run(&["stop"]).map(|_| ())
     }
 
     fn emulator_log_tail(&self, lines: usize) -> String {
-        tail(&self.qemu_log(), lines)
+        tail(
+            Path::new(&Self::status_str(&self.status(), &["qemu_log"])),
+            lines,
+        )
     }
 
     fn console_log_tail(&self, lines: usize) -> String {
-        tail(&self.console_log(), lines)
+        tail(
+            Path::new(&Self::status_str(&self.status(), &["console_log"])),
+            lines,
+        )
     }
 }
 
-impl ScreenSource for VirtualT1 {
+impl ScreenSource for VirtualDevice {
     fn describe(&self, target: &Transport, path: &str) -> String {
-        format!("QMP screendump of {target} to {path}")
+        format!("odap-vdev screen capture of {target} to {path}")
     }
 
     fn capture_png(&self, path: &str) -> Result<Vec<u8>, Error> {
-        self.qmp(&["screenshot".into(), path.to_string()])?;
+        self.checked(&["screen", "capture", path])?;
         std::fs::read(path)
             .map_err(|e| Error::new(&codes::HOST_IO, format!("cannot read {path}: {e}")))
     }
 }
 
-impl InputSink for VirtualT1 {
+impl InputSink for VirtualDevice {
     fn describe(&self, event: &InputEvent) -> String {
-        format!("dap-qmp.py {}", Self::qmp_args(event).join(" "))
+        format!("odap-vdev {}", Self::input_args(event).join(" "))
     }
 
     fn send(&self, event: &InputEvent) -> Result<(), Error> {
-        self.qmp(&Self::qmp_args(event)).map(|_| ())
+        let args = Self::input_args(event);
+        let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+        self.checked(&refs).map(|_| ())
     }
 }
 
-/// `doctor` checks of the blackbird-os checkout: `workspace.blackbird_os`,
-/// `auth.dev_key` and `vm.image`.
+/// `doctor` checks of the virtual device: `workspace.virtual_devices`, `auth.dev_key`, `vm.image`.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct CheckoutProbe;
 
 impl HostProbe for CheckoutProbe {
     fn check(&self) -> Vec<Finding> {
-        match workspace::os_checkout() {
-            Ok(dir) => checkout_findings(&VirtualT1 {
-                os_dir: dir,
-                vd_dir: workspace::vd_checkout().unwrap_or_default(),
-            }),
+        match workspace::vd_checkout() {
+            Ok(dir) => checkout_findings(&VirtualDevice { vd_dir: dir }),
             Err(e) => {
                 let skip = |id: &str, title: &str| {
-                    finding(id, title, Status::Skip, "no blackbird-os checkout", None)
+                    finding(id, title, Status::Skip, "no virtual-devices checkout", None)
                 };
                 vec![
                     finding(
-                        "workspace.blackbird_os",
-                        "blackbird-os checkout",
+                        "workspace.virtual_devices",
+                        "virtual-devices checkout",
                         Status::Error,
                         e.message,
                         Some(Fix::describe(format!(
                             "Run from inside the OpenDAP workspace (scripts/bootstrap.sh), or set {}.",
-                            workspace::OS_DIR_VAR
+                            workspace::VD_DIR_VAR
                         ))),
                     ),
                     skip("auth.dev_key", "Development SSH key"),
-                    skip("vm.image", "Virtual T1 image"),
+                    skip("vm.image", "Virtual device image"),
                 ]
             }
         }
     }
 }
 
-fn checkout_findings(vm: &VirtualT1) -> Vec<Finding> {
-    let os_dir = vm.os_dir.display().to_string();
-    let build_cmd = vm.image_build_command();
+fn checkout_findings(vm: &VirtualDevice) -> Vec<Finding> {
+    let st = vm.status();
     let mut out = vec![finding(
-        "workspace.blackbird_os",
-        "blackbird-os checkout",
+        "workspace.virtual_devices",
+        "virtual-devices checkout",
         Status::Ok,
-        os_dir,
+        vm.vd_dir.display().to_string(),
         None,
     )];
 
-    let key = vm.dev_key();
+    let key = PathBuf::from(VirtualDevice::status_str(&st, &["dev_key"]));
     out.push(match std::fs::metadata(&key) {
         Ok(m) if m.permissions().mode() & 0o077 == 0 => finding(
             "auth.dev_key",
@@ -379,40 +347,37 @@ fn checkout_findings(vm: &VirtualT1) -> Vec<Finding> {
             "Development SSH key",
             Status::Error,
             format!(
-                "{} is missing; dap-image.sh creates it and installs it in the image",
+                "{} is missing; toolkit-image odap-dev-key creates it",
                 key.display()
             ),
-            Some(Fix::command(build_cmd.clone())),
+            Some(Fix::command("odap-dev-key create")),
         ),
     });
 
-    let image = vm.image();
+    let image = VirtualDevice::status_str(&st, &["image", "path"]);
     out.push(match std::fs::metadata(&image) {
         Ok(m) => finding(
             "vm.image",
-            "Virtual T1 image",
+            "Virtual device image",
             Status::Ok,
-            format!("{} ({:.1} GB)", image.display(), m.len() as f64 / 1e9),
+            format!("{image} ({:.1} GB)", m.len() as f64 / 1e9),
             None,
         ),
         Err(_) if image_build_running() => finding(
             "vm.image",
-            "Virtual T1 image",
+            "Virtual device image",
             Status::Warn,
-            format!(
-                "{} is missing: an image build is running (dap-image.sh)",
-                image.display()
-            ),
+            format!("{image} is missing: an image build is running"),
             Some(Fix::describe(
                 "Wait for the build to finish, then run `opendap doctor` again.",
             )),
         ),
         Err(_) => finding(
             "vm.image",
-            "Virtual T1 image",
+            "Virtual device image",
             Status::Error,
-            format!("{} is missing", image.display()),
-            Some(Fix::command(build_cmd)),
+            format!("{image} is missing"),
+            Some(Fix::command(IMAGE_HINT)),
         ),
     });
     out
@@ -421,7 +386,7 @@ fn checkout_findings(vm: &VirtualT1) -> Vec<Finding> {
 #[cfg(test)]
 mod tests {
     use opendap_core::contract;
-    use opendap_model::{Button, VmState};
+    use opendap_model::{Role, VmState};
 
     use super::*;
 
@@ -432,19 +397,24 @@ mod tests {
         }
     }
 
-    /// blackbird-os and virtual-devices checkouts (one folder) with no image and nothing running.
-    fn checkout(name: &str) -> (Tmp, VirtualT1) {
+    /// A virtual-devices checkout whose odap-vdev reports a stopped device with no image.
+    fn checkout(name: &str) -> (Tmp, VirtualDevice) {
         let p = std::env::temp_dir().join(format!("opendap-vm-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&p);
-        std::fs::create_dir_all(p.join("build")).unwrap();
-        std::fs::write(p.join("build/dap-qemu.sh"), "#!/bin/sh\n").unwrap();
-        std::fs::write(p.join("build/dap-image.sh"), "#!/bin/sh\n").unwrap();
-        let dir = p.canonicalize().unwrap();
-        let vm = VirtualT1 {
-            os_dir: dir.clone(),
-            vd_dir: dir,
-        };
-        (Tmp(p), vm)
+        std::fs::create_dir_all(p.join("bin")).unwrap();
+        let tool = p.join("bin/odap-vdev");
+        std::fs::write(
+            &tool,
+            "#!/bin/sh\n[ \"$1 $2\" = \"status --json\" ] && echo '{\"state\":\"stopped\",\"pid\":null,\"endpoints\":{\"ssh\":\"127.0.0.1:2299\",\"vnc\":\"127.0.0.1:5999\",\"qmp\":\"/tmp/none.sock\"},\"image\":{\"path\":\"/nonexistent.raw\",\"present\":false},\"dev_key\":\"/nonexistent/key\",\"console_log\":\"/tmp/none.log\",\"qemu_log\":\"/tmp/none.log\"}'\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
+        (
+            Tmp(p.clone()),
+            VirtualDevice {
+                vd_dir: p.canonicalize().unwrap(),
+            },
+        )
     }
 
     #[test]
@@ -453,6 +423,7 @@ mod tests {
         contract::vm_backend(&vm);
         assert_eq!(vm.state(), VmState::Stopped);
         assert!(!vm.image_present());
+        assert_eq!(vm.ssh_endpoint(), "127.0.0.1:2299");
     }
 
     #[test]
@@ -460,32 +431,26 @@ mod tests {
         let (_t, vm) = checkout("input");
         contract::input_sink(&vm);
         let key = InputEvent::Key {
-            button: Button::VolUp,
+            role: Role::from("volume-up"),
             hold_ms: 100,
         };
         assert_eq!(
             InputSink::describe(&vm, &key),
-            "dap-qmp.py press vol-up 100"
+            "odap-vdev input press volume-up --hold 100"
         );
         assert_eq!(
             InputSink::describe(&vm, &InputEvent::Tap { x: 1, y: 2 }),
-            "dap-qmp.py tap 1 2"
+            "odap-vdev input tap 1 2"
         );
     }
 
     #[test]
-    fn plans_name_the_scripts_of_the_checkout() {
+    fn plans_name_the_tool_of_the_checkout() {
         let (_t, vm) = checkout("plans");
-        let os = vm.os_dir.display().to_string();
-        assert_eq!(
-            vm.start_command(),
-            format!("sh {os}/build/dap-qemu.sh start")
-        );
-        assert_eq!(vm.stop_command(), format!("sh {os}/build/dap-qemu.sh stop"));
-        assert_eq!(
-            vm.image_build_command(),
-            format!("sh {os}/build/dap-image.sh qemu")
-        );
+        let tool = vm.tool().display().to_string();
+        assert_eq!(vm.start_command(), format!("{tool} start"));
+        assert_eq!(vm.stop_command(), format!("{tool} stop"));
+        assert_eq!(vm.image_build_command(), IMAGE_HINT);
     }
 
     #[test]
@@ -499,7 +464,10 @@ mod tests {
         }
         let findings = checkout_findings(&vm);
         let ids: Vec<_> = findings.iter().map(|f| f.id.as_str()).collect();
-        assert_eq!(ids, ["workspace.blackbird_os", "auth.dev_key", "vm.image"]);
+        assert_eq!(
+            ids,
+            ["workspace.virtual_devices", "auth.dev_key", "vm.image"]
+        );
         assert_eq!(findings[1].status, Status::Error);
         contract::host_probe(&Fixed(findings));
         contract::host_probe(&CheckoutProbe);

@@ -87,7 +87,7 @@ impl VmBackend for FakeVm {
                 bytes: self.image.get().then_some(1),
             },
             console_log: "/os/build/run/console.log".into(),
-            os_dir: "/os".into(),
+            runner_dir: "/vd".into(),
         }
     }
     fn ssh_endpoint(&self) -> String {
@@ -103,13 +103,13 @@ impl VmBackend for FakeVm {
         self.building.get()
     }
     fn image_build_command(&self) -> String {
-        "sh /os/build/dap-image.sh qemu".into()
+        "toolkit-image odap-image build qemu".into()
     }
     fn start_command(&self) -> String {
-        "sh /os/build/dap-qemu.sh start".into()
+        "/vd/bin/odap-vdev start".into()
     }
     fn stop_command(&self) -> String {
-        "sh /os/build/dap-qemu.sh stop".into()
+        "/vd/bin/odap-vdev stop".into()
     }
     fn launch(&self) -> Result<(), Error> {
         self.launches.set(self.launches.get() + 1);
@@ -169,7 +169,7 @@ impl VmProvider for FakeProvider {
         if self.missing {
             Err(Error::new(
                 &codes::WORKSPACE_NOT_FOUND,
-                "no public/blackbird-os found above /",
+                "no public/virtual-devices found above /",
             ))
         } else {
             Ok(self.vm.clone())
@@ -279,7 +279,7 @@ impl InputSink for FakeInput {
         format!("fake {event:?}")
     }
     fn send(&self, event: &InputEvent) -> Result<(), Error> {
-        self.sent.borrow_mut().push(*event);
+        self.sent.borrow_mut().push(event.clone());
         Ok(())
     }
 }

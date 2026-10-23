@@ -1,6 +1,6 @@
 [package]
 name = "opendap-cli-kit"
-description = "Shared conventions of the OpenDAP toolkit CLIs: output modes, error envelope, exit codes, command metadata, agent detection"
+description = "Shared conventions of the opendap CLI and its plugins: output modes, error envelope, exit codes, command metadata, agent detection"
 license = "MPL-2.0"
 version.workspace = true
 edition.workspace = true

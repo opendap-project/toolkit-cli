@@ -10,15 +10,15 @@ pub fn run(ctx: &Ctx, cmd: InputCmd) -> Result<u8, CliError> {
     let InputCmd::Send { event } = cmd;
     let (vm, target) = resolve_target(&LocalVms, ctx.target.as_ref(), Need::Qmp)?;
     let event = match event {
-        InputEvent::Key { button, hold_ms } => opendap_model::InputEvent::Key {
-            button: button.into(),
+        InputEvent::Key { role, hold_ms } => opendap_model::InputEvent::Key {
+            role: opendap_model::Role(role),
             hold_ms,
         },
         InputEvent::Tap { x, y } => opendap_model::InputEvent::Tap { x, y },
     };
-    let text = match event {
-        opendap_model::InputEvent::Key { button, hold_ms } => {
-            format!("pressed {} for {hold_ms} ms on {target}", button.as_str())
+    let text = match &event {
+        opendap_model::InputEvent::Key { role, hold_ms } => {
+            format!("pressed {} for {hold_ms} ms on {target}", role.as_str())
         }
         opendap_model::InputEvent::Tap { x, y } => format!("tapped {x},{y} on {target}"),
     };

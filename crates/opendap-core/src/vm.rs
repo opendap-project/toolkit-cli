@@ -97,7 +97,7 @@ pub fn start<P: VmProvider>(
             let err = if building {
                 Error::new(
                     &codes::VM_IMAGE_MISSING,
-                    "the virtual T1 image is being rebuilt (dap-image.sh is running)",
+                    "the virtual device's image is being rebuilt (odap-image is running)",
                 )
                 .hint("Wait for the build to finish, then retry.")
             } else {
@@ -235,19 +235,19 @@ mod tests {
         assert_eq!(
             steps,
             [
-                "sh /os/build/dap-qemu.sh start",
+                "/vd/bin/odap-vdev start",
                 "wait until SSH answers on 127.0.0.1:2222 (up to 180s)"
             ]
         );
         let steps = plan(start(&p, "default", opts(true, true), &clock, &|_| {}).unwrap());
-        assert_eq!(steps, ["sh /os/build/dap-qemu.sh start"]);
+        assert_eq!(steps, ["/vd/bin/odap-vdev start"]);
         assert!(plan(stop(&p, "default", true, &clock).unwrap()).is_empty());
 
         let p = FakeProvider::running();
         assert!(plan(start(&p, "default", opts(false, true), &clock, &|_| {}).unwrap()).is_empty());
         assert_eq!(
             plan(stop(&p, "default", true, &clock).unwrap()),
-            ["sh /os/build/dap-qemu.sh stop"]
+            ["/vd/bin/odap-vdev stop"]
         );
         assert_eq!(
             p.vm.launches.get() + p.vm.stops.get(),
@@ -305,7 +305,7 @@ mod tests {
         assert_eq!(err.message, "no virtual T1 image at /os/image.raw");
         assert_eq!(
             err.fix[0].command.as_deref(),
-            Some("sh /os/build/dap-image.sh qemu")
+            Some("toolkit-image odap-image build qemu")
         );
         p.vm.building.set(true);
         let err = start(&p, "default", opts(false, false), &clock, &|_| {}).unwrap_err();

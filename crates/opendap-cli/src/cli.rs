@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -63,7 +63,7 @@ pub struct Global {
 pub enum Command {
     /// Version details
     Version,
-    /// Check the host: platform, QEMU, Lima, the blackbird-os checkout, the dev SSH key, the virtual T1 image, pre-commit
+    /// Check the host: platform, tools, QEMU for the emulator, the virtual-devices checkout, the dev SSH key, the image
     Doctor,
     /// Machine-readable description of every command, or of one
     Schema {
@@ -155,44 +155,22 @@ pub enum InputCmd {
 
 #[derive(Debug, Subcommand)]
 pub enum InputEvent {
-    /// Press a button
+    /// Press a control by its role
     Key {
-        /// The button to press
-        button: Button,
-        /// How long the button stays down, in milliseconds
+        /// The control's role on the device (the T1: action, volume-up, volume-down, main)
+        role: String,
+        /// How long the control stays down, in milliseconds
         #[arg(long, value_name = "MS", default_value_t = 100,
               value_parser = clap::value_parser!(u64).range(1..=60_000))]
         hold_ms: u64,
     },
-    /// Touch the display at a pixel (320 × 480 portrait; origin top left)
+    /// Touch the display at a pixel (origin top left; the device checks it is on its display)
     Tap {
-        /// Horizontal pixel, 0 to 319
-        #[arg(value_parser = clap::value_parser!(u32).range(0..320))]
+        /// Horizontal pixel
         x: u32,
-        /// Vertical pixel, 0 to 479
-        #[arg(value_parser = clap::value_parser!(u32).range(0..480))]
+        /// Vertical pixel
         y: u32,
     },
-}
-
-/// The four T1 buttons.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum Button {
-    Action,
-    VolUp,
-    VolDown,
-    Power,
-}
-
-impl From<Button> for opendap_model::Button {
-    fn from(b: Button) -> Self {
-        match b {
-            Button::Action => opendap_model::Button::Action,
-            Button::VolUp => opendap_model::Button::VolUp,
-            Button::VolDown => opendap_model::Button::VolDown,
-            Button::Power => opendap_model::Button::Power,
-        }
-    }
 }
 
 /// Seconds from `90`, `90s` or `3m`.
@@ -282,30 +260,23 @@ mod tests {
     }
 
     #[test]
-    fn input_is_validated() {
-        match parse(&["input", "send", "key", "vol-up"]).unwrap().command {
+    fn input_takes_roles_and_pixels() {
+        match parse(&["input", "send", "key", "volume-up"])
+            .unwrap()
+            .command
+        {
             Some(Command::Input {
                 cmd:
                     InputCmd::Send {
-                        event: InputEvent::Key { button, hold_ms },
+                        event: InputEvent::Key { role, hold_ms },
                     },
             }) => {
-                assert_eq!((button, hold_ms), (Button::VolUp, 100));
+                assert_eq!((role.as_str(), hold_ms), ("volume-up", 100));
             }
             other => panic!("{other:?}"),
         }
-        assert!(parse(&["input", "send", "key", "home"]).is_err());
         assert!(parse(&["input", "send", "tap", "319", "479"]).is_ok());
-        assert!(parse(&["input", "send", "tap", "320", "0"]).is_err());
-        assert!(parse(&["input", "send", "tap", "0", "480"]).is_err());
-    }
-
-    #[test]
-    fn buttons_keep_their_names() {
-        for b in Button::value_variants() {
-            let name = b.to_possible_value().unwrap().get_name().to_string();
-            assert_eq!(opendap_model::Button::from(*b).as_str(), name);
-        }
+        assert!(parse(&["input", "send", "tap", "-1", "0"]).is_err());
     }
 
     #[test]

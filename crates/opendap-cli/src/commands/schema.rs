@@ -222,10 +222,9 @@ mod tests {
 
         let key = serde_json::to_value(command_doc(&root, meta::find("input send key").unwrap()))
             .unwrap();
-        assert_eq!(
-            key["arguments"][0]["values"],
-            serde_json::json!(["action", "vol-up", "vol-down", "power"])
-        );
+        // A role is the device's to validate (its description names them), so it has no fixed values.
+        assert_eq!(key["arguments"][0]["name"], "role");
+        assert!(key["arguments"][0]["values"].is_null());
     }
 
     #[test]

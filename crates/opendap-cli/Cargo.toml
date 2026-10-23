@@ -1,6 +1,6 @@
 [package]
 name = "opendap-cli"
-description = "The opendap command-line tool for the T1 and Blackbird OS"
+description = "The opendap command-line tool for OpenDAP devices"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
