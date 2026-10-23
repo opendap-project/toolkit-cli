@@ -72,7 +72,8 @@ Canonical form first, then the ADB-style shortcut where one exists.
 | `device list` | `devices` | Every reachable T1 (USB, network, MaskROM) and virtual T1, with mode and transport |
 | `device get` | | Model, revision, serial, Blackbird OS version, mode, battery, storage, attached faceplate and HAT |
 | `device wait --mode <mode>` | | Waits until the target reaches a mode (`normal`, `recovery`, `maskrom`, `gadget:*`) |
-| `device reboot [--mode normal\|recovery\|maskrom]` | `reboot` | Reboots, optionally into another mode |
+| `device reboot [--mode normal\|debug\|recovery\|maskrom]` | `reboot` | Reboots, optionally into another boot mode: a direct request to the device's `odap-reboot` (blackbird-os), like `adb reboot recovery`, never an imitation of the button combinations. The device says which modes it has; another fails with `device.mode_unsupported` |
+| `device poweroff` | | Shuts the device down in order |
 | `device pair` / `device unpair` | | Exchanges the host key with the device, which confirms on screen or over the console |
 | `context list\|get\|create\|use\|delete` | | Named target and defaults bundles |
 

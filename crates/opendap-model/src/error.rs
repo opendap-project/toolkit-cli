@@ -90,6 +90,12 @@ codes! {
     HOST_IO = ("host.io", exit::FAILURE, false,
         "A file on the host could not be read or written.",
         "Check the path and its permissions.");
+    DEVICE_MODE_UNSUPPORTED = ("device.mode_unsupported", exit::UNSUPPORTED, false,
+        "The device has no such boot mode.",
+        "Run `opendap exec -- odap-reboot --list` for the boot modes the device has.");
+    DEVICE_POWER_FAILED = ("device.power_failed", exit::FAILURE, true,
+        "The device did not accept the restart or power-off.",
+        "Read the device's message in the error details, or its journal with `opendap exec -- journalctl -b`.");
     TRANSPORT_SSH_FAILED = ("transport.ssh_failed", exit::FAILURE, true,
         "The SSH connection to the target failed.",
         "Check that the target is online with `opendap device list`, then retry.");

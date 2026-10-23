@@ -133,6 +133,34 @@ pub enum VmCmd {
 pub enum DeviceCmd {
     /// Every known T1 with its transport, state and mode (today: the virtual T1)
     List,
+    /// Restart the device, optionally into another boot mode (the device says which it has)
+    Reboot {
+        /// The mode to boot into: normal, debug (once), recovery, maskrom
+        #[arg(long, value_enum, default_value_t = BootModeArg::Normal)]
+        mode: BootModeArg,
+    },
+    /// Shut the device down in order
+    Poweroff,
+}
+
+/// The boot modes of `device reboot --mode`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum BootModeArg {
+    Normal,
+    Debug,
+    Recovery,
+    Maskrom,
+}
+
+impl From<BootModeArg> for opendap_model::BootMode {
+    fn from(m: BootModeArg) -> Self {
+        match m {
+            BootModeArg::Normal => Self::Normal,
+            BootModeArg::Debug => Self::Debug,
+            BootModeArg::Recovery => Self::Recovery,
+            BootModeArg::Maskrom => Self::Maskrom,
+        }
+    }
 }
 
 #[derive(Debug, Subcommand)]

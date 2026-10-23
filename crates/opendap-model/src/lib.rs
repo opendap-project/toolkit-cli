@@ -9,6 +9,7 @@ pub mod error;
 pub mod exec;
 pub mod finding;
 pub mod input;
+pub mod power;
 pub mod screen;
 pub mod vm;
 
@@ -17,6 +18,7 @@ pub use error::{Error, ErrorBody, ErrorCode, ErrorDocument, Fix};
 pub use exec::ExecResult;
 pub use finding::{DoctorReport, Finding, Status, Summary};
 pub use input::{InputEvent, InputSent, Role};
+pub use power::{BootMode, PowerAction, PowerDone};
 pub use screen::ScreenCapture;
 pub use vm::{Endpoints, ImageInfo, VmInfo, VmState};
 
@@ -28,6 +30,7 @@ pub const SCHEMAS: &[&str] = &[
     "opendap.error/v1",
     "opendap.exec/v1",
     "opendap.input/v1",
+    "opendap.power/v1",
     "opendap.schema/v1",
     "opendap.screen_capture/v1",
     "opendap.version/v1",

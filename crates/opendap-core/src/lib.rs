@@ -9,6 +9,7 @@ pub mod doctor;
 pub mod exec;
 pub mod input;
 pub mod ports;
+pub mod power;
 pub mod screen;
 pub mod target;
 pub mod vm;

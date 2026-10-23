@@ -191,6 +191,14 @@ impl FakeTransport {
         self.ran.borrow_mut().push(argv.to_vec());
         match argv.first().map(String::as_str) {
             Some("echo") => (0, format!("{}\n", argv[1..].join(" "))),
+            // A device with the normal and debug boot modes only.
+            Some("odap-reboot") => match argv.get(1).map(String::as_str) {
+                Some("normal" | "debug") => (0, String::new()),
+                _ => (2, String::new()),
+            },
+            Some("systemctl") if argv.get(1).map(String::as_str) == Some("poweroff") => {
+                (0, String::new())
+            }
             // `true`, or an interactive shell that the user leaves at once.
             Some("true") | None => (0, String::new()),
             Some("sh") if argv.get(1).map(String::as_str) == Some("-c") => {
