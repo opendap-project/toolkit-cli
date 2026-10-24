@@ -20,6 +20,17 @@ pub fn run(ctx: &Ctx, cmd: InputCmd) -> Result<u8, CliError> {
         InputEvent::KeyUp { role } => opendap_model::InputEvent::KeyUp {
             role: opendap_model::Role(role),
         },
+        InputEvent::Keyboard { key, down, up } => {
+            // --down or --up: that half; neither: a press, down now and up as the event sent.
+            if !down && !up && !ctx.dry_run {
+                use opendap_core::InputSink;
+                vm.send(&opendap_model::InputEvent::Keyboard {
+                    key: key.clone(),
+                    down: true,
+                })?;
+            }
+            opendap_model::InputEvent::Keyboard { key, down }
+        }
         InputEvent::Tap { x, y } => opendap_model::InputEvent::Tap { x, y },
     };
     let text = match &event {
@@ -31,6 +42,12 @@ pub fn run(ctx: &Ctx, cmd: InputCmd) -> Result<u8, CliError> {
         }
         opendap_model::InputEvent::KeyUp { role } => {
             format!("released {} on {target}", role.as_str())
+        }
+        opendap_model::InputEvent::Keyboard { key, down } => {
+            format!(
+                "keyboard {key} {} on {target}",
+                if *down { "down" } else { "up" }
+            )
         }
         opendap_model::InputEvent::Tap { x, y } => format!("tapped {x},{y} on {target}"),
     };

@@ -171,6 +171,12 @@ impl VirtualDevice {
                     "up".into(),
                 ]
             }
+            InputEvent::Keyboard { key, down } => vec![
+                "input".into(),
+                "keyboard".into(),
+                key.clone(),
+                if *down { "down" } else { "up" }.into(),
+            ],
             InputEvent::Tap { x, y } => {
                 vec!["input".into(), "tap".into(), x.to_string(), y.to_string()]
             }

@@ -38,6 +38,10 @@ pub enum InputEvent {
     /// Release the control with `role`.
     #[serde(rename = "key-up")]
     KeyUp { role: Role },
+    /// A key of a keyboard attached to the device (an external one, or the simulator's arrows),
+    /// by its Linux name without `KEY_`, lower case (`left`, `enter`): not a control of the
+    /// device, so it reaches the activity as a keyboard's key.
+    Keyboard { key: String, down: bool },
     /// Touch the display at a pixel.
     Tap { x: u32, y: u32 },
 }

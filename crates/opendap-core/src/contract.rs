@@ -105,6 +105,13 @@ pub fn input_sink<S: InputSink>(s: &S) {
         );
         assert!(!s.describe(&InputEvent::KeyUp { role }).is_empty());
     }
+    assert!(
+        !s.describe(&InputEvent::Keyboard {
+            key: "left".into(),
+            down: true
+        })
+        .is_empty()
+    );
     assert!(!s.describe(&InputEvent::Tap { x: 0, y: 0 }).is_empty());
 }
 

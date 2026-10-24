@@ -301,6 +301,28 @@ pub static COMMANDS: &[CommandMeta] = &[
         ],
     },
     CommandMeta {
+        path: "input send keyboard",
+        summary: "A key of a keyboard attached to the device, by its Linux name; it reaches the activity as a keyboard's key",
+        category: Category::Mutate,
+        idempotent: false,
+        targeted: true,
+        output_schema: "opendap.input/v1",
+        errors: &[
+            "target.invalid",
+            "target.unsupported",
+            "device.not_found",
+            "vm.not_found",
+            "vm.not_running",
+            "workspace.not_found",
+            "host.tool_missing",
+            "transport.qmp_failed",
+        ],
+        examples: &[
+            "opendap input send keyboard right",
+            "opendap input send keyboard enter --down",
+        ],
+    },
+    CommandMeta {
         path: "input send tap",
         summary: "Touch the display at a pixel",
         category: Category::Mutate,

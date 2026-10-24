@@ -83,6 +83,20 @@ impl LiveKeys {
     }
 }
 
+/// QEMU's key code for a Linux key name: the same word, except where QEMU names it otherwise.
+pub fn keyboard_qcode(key: &str) -> String {
+    match key {
+        "enter" => "ret",
+        "escape" => "esc",
+        "space" => "spc",
+        "leftshift" => "shift",
+        "leftctrl" => "ctrl",
+        "leftalt" => "alt",
+        other => other,
+    }
+    .to_string()
+}
+
 fn qmp_error(socket: &Path, e: std::io::Error) -> Error {
     Error::new(
         &codes::TRANSPORT_QMP_FAILED,
@@ -117,6 +131,9 @@ impl InputSink for LiveKeys {
             }
             InputEvent::KeyDown { role } => format!("put {} down", role.as_str()),
             InputEvent::KeyUp { role } => format!("release {}", role.as_str()),
+            InputEvent::Keyboard { key, down } => {
+                format!("keyboard {key} {}", if *down { "down" } else { "up" })
+            }
             InputEvent::Tap { x, y } => format!("tap {x},{y} (not a control: refused)"),
         };
         format!("QMP {}: {what}", self.socket.display())
@@ -132,6 +149,7 @@ impl InputSink for LiveKeys {
                 thread::sleep(Duration::from_millis(*hold_ms));
                 self.key(q, false)
             }
+            InputEvent::Keyboard { key, down } => self.key(&keyboard_qcode(key), *down),
             InputEvent::Tap { .. } => Err(Error::new(
                 &codes::INPUT_INVALID,
                 "live keys carry the controls; the display takes touches through its own link",

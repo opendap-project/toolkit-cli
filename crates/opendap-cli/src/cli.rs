@@ -250,6 +250,18 @@ pub enum InputEvent {
         /// The control's role on the device
         role: String,
     },
+    /// A key of a keyboard attached to the device, by its Linux name (left, right, enter…): it
+    /// reaches the activity as a keyboard's key, not as a control
+    Keyboard {
+        /// The key's Linux name without KEY_, lower case
+        key: String,
+        /// Put it down only (release it with --up)
+        #[arg(long, conflicts_with = "up")]
+        down: bool,
+        /// Release it only
+        #[arg(long)]
+        up: bool,
+    },
     /// Touch the display at a pixel (origin top left; the device checks it is on its display)
     Tap {
         /// Horizontal pixel
