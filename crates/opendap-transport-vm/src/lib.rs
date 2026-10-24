@@ -200,6 +200,7 @@ impl VirtualDevice {
             HardwareChange::Battery { percent } => {
                 return vec!["power".into(), "battery".into(), percent.to_string()];
             }
+            HardwareChange::Light { lux } => return vec!["light".into(), lux.to_string()],
         };
         a.iter().map(|s| s.to_string()).collect()
     }
@@ -229,10 +230,20 @@ impl VirtualDevice {
             .as_u64()
             .and_then(|p| u8::try_from(p).ok())
             .filter(|p| *p <= 100);
+        let status_led = v["led"].as_array().and_then(|a| {
+            let c: Vec<u8> = a
+                .iter()
+                .filter_map(|c| c.as_u64().and_then(|c| u8::try_from(c).ok()))
+                .collect();
+            <[u8; 3]>::try_from(c).ok()
+        });
+        let light = v["light"].as_u64().and_then(|l| u32::try_from(l).ok());
         Ok(HardwareState {
             target: target.clone(),
             attached,
             battery,
+            status_led,
+            light,
         })
     }
 }

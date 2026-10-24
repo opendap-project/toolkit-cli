@@ -91,7 +91,7 @@ pub static COMMANDS: &[CommandMeta] = &[
     },
     CommandMeta {
         path: "hardware get",
-        summary: "What is attached to the target by hand (card, USB, charger) and its battery's charge",
+        summary: "What is attached to the target by hand (card, USB, charger), its battery's charge, its status LED and the light on its sensor",
         category: Category::Read,
         idempotent: true,
         targeted: true,
@@ -111,7 +111,7 @@ pub static COMMANDS: &[CommandMeta] = &[
     },
     CommandMeta {
         path: "hardware update",
-        summary: "Attach or detach a microSD card, a USB disk or DAC, or a charger, or set the battery's charge (virtual devices)",
+        summary: "Attach or detach a microSD card, a USB disk or DAC, or a charger, or set the battery's charge or the light on the sensor (virtual devices)",
         category: Category::Mutate,
         idempotent: true,
         targeted: true,

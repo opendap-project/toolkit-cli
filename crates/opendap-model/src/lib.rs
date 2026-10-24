@@ -18,7 +18,7 @@ pub use device::{Device, DeviceList, DeviceState, Mode, Target, Transport, Warni
 pub use error::{Error, ErrorBody, ErrorCode, ErrorDocument, Fix};
 pub use exec::ExecResult;
 pub use finding::{DoctorReport, Finding, Status, Summary};
-pub use hardware::{Attachment, HardwareChange, HardwareChanged, HardwareState};
+pub use hardware::{Attachment, HardwareChange, HardwareChanged, HardwareState, LIGHT_MAX_LUX};
 pub use input::{InputEvent, InputSent, Role};
 pub use power::{BootMode, PowerAction, PowerDone};
 pub use screen::ScreenCapture;

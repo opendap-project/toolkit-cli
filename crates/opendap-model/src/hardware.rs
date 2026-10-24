@@ -56,6 +56,13 @@ pub struct HardwareState {
     /// The battery's charge in percent, when the board's battery model can be read (not while
     /// the device boots).
     pub battery: Option<u8>,
+    /// The colour the status LED shows, red, green and blue from 0 to 255, when the board has one
+    /// that can be read. What the device's system set it to, as an eye would see it.
+    #[serde(default)]
+    pub status_led: Option<[u8; 3]>,
+    /// The light on the ambient light sensor, in lux, when the board has one that can be read.
+    #[serde(default)]
+    pub light: Option<u32>,
 }
 
 impl HardwareState {
@@ -78,7 +85,14 @@ pub enum HardwareChange {
     Battery {
         percent: u8,
     },
+    /// Set the light that falls on the ambient light sensor, in lux (0–100 000).
+    Light {
+        lux: u32,
+    },
 }
+
+/// The brightest light the ambient light sensor is set to, in lux (direct sunlight).
+pub const LIGHT_MAX_LUX: u32 = 100_000;
 
 /// A change that reached the hardware; `changed` is false when it was already so.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -299,6 +299,7 @@ impl InputSink for FakeInput {
 pub struct FakeBench {
     pub attached: RefCell<Vec<Attachment>>,
     pub battery: Cell<u8>,
+    pub light: Cell<u32>,
     pub applied: RefCell<Vec<HardwareChange>>,
 }
 
@@ -307,6 +308,7 @@ impl Default for FakeBench {
         FakeBench {
             attached: RefCell::default(),
             battery: Cell::new(80),
+            light: Cell::new(120),
             applied: RefCell::default(),
         }
     }
@@ -325,6 +327,8 @@ impl HardwareBench for FakeBench {
                 .filter(|a| attached.contains(a))
                 .collect(),
             battery: Some(self.battery.get()),
+            status_led: Some([0, 0, 0]),
+            light: Some(self.light.get()),
         })
     }
     fn apply(&self, change: &HardwareChange) -> Result<(), Error> {
@@ -335,6 +339,7 @@ impl HardwareBench for FakeBench {
                 self.attached.borrow_mut().retain(|a| *a != attachment)
             }
             HardwareChange::Battery { percent } => self.battery.set(percent),
+            HardwareChange::Light { lux } => self.light.set(lux),
         }
         Ok(())
     }

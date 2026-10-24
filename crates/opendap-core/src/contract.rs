@@ -132,6 +132,7 @@ pub fn hardware_bench<B: HardwareBench>(b: &B) {
         !b.describe(&HardwareChange::Battery { percent: 50 })
             .is_empty()
     );
+    assert!(!b.describe(&HardwareChange::Light { lux: 300 }).is_empty());
     let st = b.hardware(&vm_target()).expect("reads the hardware");
     let order: Vec<Attachment> = Attachment::ALL
         .into_iter()
@@ -139,6 +140,7 @@ pub fn hardware_bench<B: HardwareBench>(b: &B) {
         .collect();
     assert_eq!(st.attached, order);
     assert!(st.battery.is_none_or(|p| p <= 100));
+    assert!(st.light.is_none_or(|l| l <= opendap_model::LIGHT_MAX_LUX));
 }
 
 /// [`HostProbe`]: findings have a dotted ID, a title and a message, and every

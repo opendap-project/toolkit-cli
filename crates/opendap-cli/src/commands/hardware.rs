@@ -14,16 +14,18 @@ pub fn run(ctx: &Ctx, cmd: HardwareCmd) -> Result<u8, CliError> {
             attach,
             detach,
             battery,
+            light,
         } => {
-            // clap requires exactly one of the three.
-            let change = match (attach, detach, battery) {
-                (Some(a), _, _) => HardwareChange::Attach {
+            // clap requires exactly one of them.
+            let change = match (attach, detach, battery, light) {
+                (Some(a), ..) => HardwareChange::Attach {
                     attachment: a.into(),
                 },
-                (_, Some(a), _) => HardwareChange::Detach {
+                (_, Some(a), ..) => HardwareChange::Detach {
                     attachment: a.into(),
                 },
-                (_, _, Some(percent)) => HardwareChange::Battery { percent },
+                (_, _, Some(percent), _) => HardwareChange::Battery { percent },
+                (.., Some(lux)) => HardwareChange::Light { lux },
                 _ => unreachable!("clap requires one change"),
             };
             update(ctx, change)
@@ -37,8 +39,16 @@ fn line(st: &HardwareState) -> String {
         .battery
         .map(|p| format!("{p} %"))
         .unwrap_or_else(|| "unknown".into());
+    let led = st
+        .status_led
+        .map(|[r, g, b]| format!("#{r:02x}{g:02x}{b:02x}"))
+        .unwrap_or_else(|| "unknown".into());
+    let light = st
+        .light
+        .map(|l| format!("{l} lx"))
+        .unwrap_or_else(|| "unknown".into());
     format!(
-        "{}: attached: {}; battery: {battery}",
+        "{}: attached: {}; battery: {battery}; status LED: {led}; light: {light}",
         st.target,
         if attached.is_empty() {
             "nothing".to_string()
@@ -74,6 +84,7 @@ fn update(ctx: &Ctx, change: HardwareChange) -> Result<u8, CliError> {
         HardwareChange::Detach { attachment } if done.changed => format!("detached {attachment}"),
         HardwareChange::Detach { attachment } => format!("{attachment} was not attached"),
         HardwareChange::Battery { percent } => format!("battery at {percent} %"),
+        HardwareChange::Light { lux } => format!("light at {lux} lx"),
     };
     let text = line(&done.state);
     ctx.out.emit(

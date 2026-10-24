@@ -28,11 +28,20 @@ pub fn change<B: HardwareBench>(
             format!("battery {percent} %: the charge is 0 to 100"),
         ));
     }
+    if let HardwareChange::Light { lux } = change
+        && lux > opendap_model::LIGHT_MAX_LUX
+    {
+        return Err(Error::new(
+            &codes::INPUT_INVALID,
+            format!("light {lux} lx: 0 to {} lx", opendap_model::LIGHT_MAX_LUX),
+        ));
+    }
     let before = bench.hardware(&target)?;
     let already = match change {
         HardwareChange::Attach { attachment } => before.has(attachment),
         HardwareChange::Detach { attachment } => !before.has(attachment),
         HardwareChange::Battery { percent } => before.battery == Some(percent),
+        HardwareChange::Light { lux } => before.light == Some(lux),
     };
     if dry_run {
         let plan = if already {

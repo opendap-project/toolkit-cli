@@ -136,9 +136,11 @@ pub enum VmCmd {
 
 #[derive(Debug, Subcommand)]
 pub enum HardwareCmd {
-    /// What is attached to the target by hand (card, USB, charger) and its battery's charge
+    /// What is attached to the target by hand (card, USB, charger), its battery's charge, the
+    /// colour of its status LED and the light on its sensor
     Get,
-    /// Attach or detach something by hand, or set the battery's charge (virtual devices)
+    /// Attach or detach something by hand, set the battery's charge or the light on the sensor
+    /// (virtual devices)
     #[command(group = clap::ArgGroup::new("change").required(true).multiple(false))]
     Update {
         /// Attach this, as a hand does (a card goes in its socket)
@@ -151,6 +153,10 @@ pub enum HardwareCmd {
         #[arg(long, value_name = "PERCENT", group = "change",
               value_parser = clap::value_parser!(u8).range(0..=100))]
         battery: Option<u8>,
+        /// Set the light on the ambient light sensor, in lux
+        #[arg(long, value_name = "LUX", group = "change",
+              value_parser = clap::value_parser!(u32).range(0..=100_000))]
+        light: Option<u32>,
     },
 }
 
