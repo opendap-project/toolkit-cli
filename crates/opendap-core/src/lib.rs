@@ -7,6 +7,7 @@
 pub mod device;
 pub mod doctor;
 pub mod exec;
+pub mod hardware;
 pub mod input;
 pub mod ports;
 pub mod power;
@@ -21,8 +22,8 @@ pub mod contract;
 mod fake;
 
 pub use ports::{
-    Captured, Clock, DeviceTransport, Exit, HostProbe, InputSink, ScreenSource, VmBackend,
-    VmProvider,
+    Captured, Clock, DeviceTransport, Exit, HardwareBench, HostProbe, InputSink, ScreenSource,
+    VmBackend, VmProvider,
 };
 pub use target::{Need, resolve_target};
 

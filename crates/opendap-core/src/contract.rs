@@ -5,9 +5,11 @@
 //! The suites panic on the first broken rule, like `assert!`.
 
 use opendap_model::vm::DEFAULT_NAME;
-use opendap_model::{InputEvent, Role, Status, Transport, VmState};
+use opendap_model::{Attachment, HardwareChange, InputEvent, Role, Status, Transport, VmState};
 
-use crate::ports::{DeviceTransport, Exit, HostProbe, InputSink, ScreenSource, VmBackend};
+use crate::ports::{
+    DeviceTransport, Exit, HardwareBench, HostProbe, InputSink, ScreenSource, VmBackend,
+};
 use crate::screen::png_size;
 
 fn vm_target() -> Transport {
@@ -95,7 +97,41 @@ pub fn input_sink<S: InputSink>(s: &S) {
         });
         assert!(!d.is_empty(), "{role}");
     }
+    for role in Role::COMMON {
+        let role = Role::from(role);
+        assert!(
+            !s.describe(&InputEvent::KeyDown { role: role.clone() })
+                .is_empty()
+        );
+        assert!(!s.describe(&InputEvent::KeyUp { role }).is_empty());
+    }
     assert!(!s.describe(&InputEvent::Tap { x: 0, y: 0 }).is_empty());
+}
+
+/// [`HardwareBench`]: every change can be described, and the state lists each attachment once,
+/// in [`Attachment::ALL`] order, with a charge of at most 100 %. Changes nothing.
+pub fn hardware_bench<B: HardwareBench>(b: &B) {
+    for attachment in Attachment::ALL {
+        assert!(
+            !b.describe(&HardwareChange::Attach { attachment })
+                .is_empty()
+        );
+        assert!(
+            !b.describe(&HardwareChange::Detach { attachment })
+                .is_empty()
+        );
+    }
+    assert!(
+        !b.describe(&HardwareChange::Battery { percent: 50 })
+            .is_empty()
+    );
+    let st = b.hardware(&vm_target()).expect("reads the hardware");
+    let order: Vec<Attachment> = Attachment::ALL
+        .into_iter()
+        .filter(|a| st.attached.contains(a))
+        .collect();
+    assert_eq!(st.attached, order);
+    assert!(st.battery.is_none_or(|p| p <= 100));
 }
 
 /// [`HostProbe`]: findings have a dotted ID, a title and a message, and every

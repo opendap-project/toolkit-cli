@@ -3,6 +3,7 @@
 mod device;
 mod doctor;
 mod exec;
+mod hardware;
 mod input;
 mod schema;
 mod screen;
@@ -41,6 +42,7 @@ pub fn run(ctx: &Ctx, command: Command) -> Result<u8, CliError> {
         Command::Exec { argv } => exec::run(ctx, argv),
         Command::Screen { cmd } => screen::run(ctx, cmd),
         Command::Input { cmd } => input::run(ctx, cmd),
+        Command::Hardware { cmd } => hardware::run(ctx, cmd),
     }
 }
 

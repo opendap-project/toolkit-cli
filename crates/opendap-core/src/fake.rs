@@ -8,11 +8,14 @@ use std::time::Duration;
 
 use opendap_model::error as codes;
 use opendap_model::vm::DEFAULT_NAME;
-use opendap_model::{Endpoints, Error, Finding, ImageInfo, InputEvent, Status, Transport, VmInfo};
+use opendap_model::{
+    Attachment, Endpoints, Error, Finding, HardwareChange, HardwareState, ImageInfo, InputEvent,
+    Status, Transport, VmInfo,
+};
 
 use crate::ports::{
-    Captured, Clock, DeviceTransport, Exit, HostProbe, InputSink, ScreenSource, VmBackend,
-    VmProvider,
+    Captured, Clock, DeviceTransport, Exit, HardwareBench, HostProbe, InputSink, ScreenSource,
+    VmBackend, VmProvider,
 };
 
 /// A clock that only moves when the code under test sleeps.
@@ -288,6 +291,51 @@ impl InputSink for FakeInput {
     }
     fn send(&self, event: &InputEvent) -> Result<(), Error> {
         self.sent.borrow_mut().push(event.clone());
+        Ok(())
+    }
+}
+
+/// Hardware that does what it is told at once.
+pub struct FakeBench {
+    pub attached: RefCell<Vec<Attachment>>,
+    pub battery: Cell<u8>,
+    pub applied: RefCell<Vec<HardwareChange>>,
+}
+
+impl Default for FakeBench {
+    fn default() -> Self {
+        FakeBench {
+            attached: RefCell::default(),
+            battery: Cell::new(80),
+            applied: RefCell::default(),
+        }
+    }
+}
+
+impl HardwareBench for FakeBench {
+    fn describe(&self, change: &HardwareChange) -> String {
+        format!("fake {change:?}")
+    }
+    fn hardware(&self, target: &Transport) -> Result<HardwareState, Error> {
+        let attached = self.attached.borrow();
+        Ok(HardwareState {
+            target: target.clone(),
+            attached: Attachment::ALL
+                .into_iter()
+                .filter(|a| attached.contains(a))
+                .collect(),
+            battery: Some(self.battery.get()),
+        })
+    }
+    fn apply(&self, change: &HardwareChange) -> Result<(), Error> {
+        self.applied.borrow_mut().push(*change);
+        match *change {
+            HardwareChange::Attach { attachment } => self.attached.borrow_mut().push(attachment),
+            HardwareChange::Detach { attachment } => {
+                self.attached.borrow_mut().retain(|a| *a != attachment)
+            }
+            HardwareChange::Battery { percent } => self.battery.set(percent),
+        }
         Ok(())
     }
 }

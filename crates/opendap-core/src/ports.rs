@@ -4,7 +4,9 @@
 
 use std::time::Duration;
 
-use opendap_model::{Error, Finding, InputEvent, Transport, VmInfo, VmState};
+use opendap_model::{
+    Error, Finding, HardwareChange, HardwareState, InputEvent, Transport, VmInfo, VmState,
+};
 
 /// Finds the virtual T1 backend on this host.
 pub trait VmProvider {
@@ -118,6 +120,18 @@ pub trait InputSink {
 
     /// Deliver one event.
     fn send(&self, event: &InputEvent) -> Result<(), Error>;
+}
+
+/// The physical side of a virtual device: attaching things to it by hand, and its battery.
+pub trait HardwareBench {
+    /// What [`Self::apply`] would do, for dry-run plans.
+    fn describe(&self, change: &HardwareChange) -> String;
+
+    /// The hardware's state, as the emulated hardware has it (never the device's system).
+    fn hardware(&self, target: &Transport) -> Result<HardwareState, Error>;
+
+    /// Make one change. It returns when the hardware has it.
+    fn apply(&self, change: &HardwareChange) -> Result<(), Error>;
 }
 
 /// One host check of `doctor`. A probe may report several findings.

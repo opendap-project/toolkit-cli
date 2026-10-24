@@ -97,6 +97,11 @@ pub enum Command {
         #[command(subcommand)]
         cmd: InputCmd,
     },
+    /// The target's physical side: what is attached by hand, and its battery
+    Hardware {
+        #[command(subcommand)]
+        cmd: HardwareCmd,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -127,6 +132,49 @@ pub enum VmCmd {
         #[arg(default_value = "default")]
         name: String,
     },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum HardwareCmd {
+    /// What is attached to the target by hand (card, USB, charger) and its battery's charge
+    Get,
+    /// Attach or detach something by hand, or set the battery's charge (virtual devices)
+    #[command(group = clap::ArgGroup::new("change").required(true).multiple(false))]
+    Update {
+        /// Attach this, as a hand does (a card goes in its socket)
+        #[arg(long, value_name = "WHAT", group = "change")]
+        attach: Option<AttachmentArg>,
+        /// Detach this, as a hand does
+        #[arg(long, value_name = "WHAT", group = "change")]
+        detach: Option<AttachmentArg>,
+        /// Set the battery's charge, in percent
+        #[arg(long, value_name = "PERCENT", group = "change",
+              value_parser = clap::value_parser!(u8).range(0..=100))]
+        battery: Option<u8>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum AttachmentArg {
+    /// A microSD card (the board's card size; the same card each time)
+    Microsd,
+    /// A USB disk (1 GiB, the same disk each time)
+    UsbStorage,
+    /// A USB DAC
+    UsbAudio,
+    /// A charger on the USB port
+    Charger,
+}
+
+impl From<AttachmentArg> for opendap_model::Attachment {
+    fn from(a: AttachmentArg) -> Self {
+        match a {
+            AttachmentArg::Microsd => Self::Microsd,
+            AttachmentArg::UsbStorage => Self::UsbStorage,
+            AttachmentArg::UsbAudio => Self::UsbAudio,
+            AttachmentArg::Charger => Self::Charger,
+        }
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -191,6 +239,16 @@ pub enum InputEvent {
         #[arg(long, value_name = "MS", default_value_t = 100,
               value_parser = clap::value_parser!(u64).range(1..=60_000))]
         hold_ms: u64,
+    },
+    /// Put a control down and leave it there (release it with key-up)
+    KeyDown {
+        /// The control's role on the device
+        role: String,
+    },
+    /// Release a control put down with key-down
+    KeyUp {
+        /// The control's role on the device
+        role: String,
     },
     /// Touch the display at a pixel (origin top left; the device checks it is on its display)
     Tap {

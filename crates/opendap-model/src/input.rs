@@ -31,6 +31,13 @@ impl From<&str> for Role {
 pub enum InputEvent {
     /// Press the control with `role` for `hold_ms` milliseconds.
     Key { role: Role, hold_ms: u64 },
+    /// Put the control with `role` down and leave it there, as a finger resting on it: for
+    /// surfaces that follow a person's hand (the simulator window), paired with [`Self::KeyUp`].
+    #[serde(rename = "key-down")]
+    KeyDown { role: Role },
+    /// Release the control with `role`.
+    #[serde(rename = "key-up")]
+    KeyUp { role: Role },
     /// Touch the display at a pixel.
     Tap { x: u32, y: u32 },
 }

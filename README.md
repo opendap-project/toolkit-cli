@@ -16,10 +16,14 @@ A first slice of the [CLI spec](docs/specs/opendap-cli.md) is implemented. It wo
 | `vm list`, `vm get [<name>]` | The virtual T1 instance, its state (`stopped`, `booting`, `running`) and endpoints |
 | `vm start [<name>]`, `vm stop [<name>]` | Boots the virtual T1 and waits until SSH answers (`--detach` returns at once, `--wait-timeout` defaults to `180s`); stops it. Both are idempotent |
 | `device list` | Every known T1 with its transport, state and mode. Today only `vm:default` |
+| `device reboot [--mode normal\|debug\|recovery\|maskrom]`, `device poweroff` | Restarts the device into a boot mode, or shuts it down in order: a direct request, never an imitation of the button combinations. A mode the device lacks exits 11 |
 | `exec [-- cmd…]` | Runs a command on the target over SSH, or opens a shell when none is given |
 | `screen capture [file]` | Saves the display as a 320 × 480 PNG |
-| `input send key <button>` | Presses `action`, `vol-up`, `vol-down` or `power` (`--hold-ms`, default 100) |
+| `input send key <role>` | Presses a control by its role, on the T1 `action`, `volume-up`, `volume-down` or `main` (`--hold-ms`, default 100) |
+| `input send key-down <role>`, `input send key-up <role>` | Puts a control down and leaves it there, then releases it: holds and combinations of any length |
 | `input send tap <x> <y>` | Touches the display at a pixel |
+| `hardware get` | What is attached to the target by hand (`microsd`, `usb-storage`, `usb-audio`, `charger`) and its battery's charge. The hardware's state, not the system's: a card is attached from the moment it is in its socket, mounted or not |
+| `hardware update --attach <what>`, `--detach <what>`, `--battery <percent>` | Attaches or detaches one of those, or sets the charge (virtual devices). Idempotent: attaching what is attached changes nothing |
 
 Every other command in the spec is not implemented yet.
 
@@ -40,7 +44,7 @@ opendap vm start
 opendap device list
 opendap exec -- uname -a
 opendap screen capture /tmp/t1.png
-opendap input send key vol-up
+opendap input send key volume-up
 opendap vm stop
 ```
 

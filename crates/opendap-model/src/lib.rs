@@ -8,6 +8,7 @@ pub mod device;
 pub mod error;
 pub mod exec;
 pub mod finding;
+pub mod hardware;
 pub mod input;
 pub mod power;
 pub mod screen;
@@ -17,6 +18,7 @@ pub use device::{Device, DeviceList, DeviceState, Mode, Target, Transport, Warni
 pub use error::{Error, ErrorBody, ErrorCode, ErrorDocument, Fix};
 pub use exec::ExecResult;
 pub use finding::{DoctorReport, Finding, Status, Summary};
+pub use hardware::{Attachment, HardwareChange, HardwareChanged, HardwareState};
 pub use input::{InputEvent, InputSent, Role};
 pub use power::{BootMode, PowerAction, PowerDone};
 pub use screen::ScreenCapture;
@@ -29,6 +31,7 @@ pub const SCHEMAS: &[&str] = &[
     "opendap.doctor/v1",
     "opendap.error/v1",
     "opendap.exec/v1",
+    "opendap.hardware/v1",
     "opendap.input/v1",
     "opendap.power/v1",
     "opendap.schema/v1",

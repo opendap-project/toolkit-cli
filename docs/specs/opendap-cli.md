@@ -87,7 +87,8 @@ Canonical form first, then the ADB-style shortcut where one exists.
 | `log watch` / `log get` | `logs` | Streams or fetches the system journal, filterable by service and priority |
 | `forward create <local> <remote>` / `forward list` / `forward delete` | | Port forwarding between host and device |
 | `screen capture [file]` | `screenshot` | Captures the display |
-| `input send key <button>` / `input send tap <x> <y>` | | Injects button presses (`action`, `vol-up`, `vol-down`, `power`) and touches |
+| `input send key <role>` / `input send key-down <role>` / `input send key-up <role>` / `input send tap <x> <y>` | | Injects presses of a control by its role (the T1: `action`, `volume-up`, `volume-down`, `main`), a control held down and released, and touches |
+| `hardware get` / `hardware update --attach\|--detach <what>` / `hardware update --battery <percent>` | | The target's physical side: what is attached by hand (`microsd`, `usb-storage`, `usb-audio`, `charger`) and the battery's charge, as the hardware has it, not the system; changing it is for virtual devices |
 
 ### Software and system
 

@@ -1,9 +1,12 @@
 //! Virtual device adapter of the `opendap` CLI: drives the virtual devices of a virtual-devices
 //! checkout through its documented tool, `odap-vdev` (status as JSON, lifecycle, the management
 //! link, screen and input), never through its files (RFC 0008). It manages one instance,
-//! `vm:default`, and implements the core's [`VmProvider`], [`VmBackend`], [`ScreenSource`] and
-//! [`InputSink`] ports, and the [`CheckoutProbe`] for `doctor`. POSIX hosts only.
+//! `vm:default`, and implements the core's [`VmProvider`], [`VmBackend`], [`ScreenSource`],
+//! [`InputSink`] and [`HardwareBench`] ports, and the [`CheckoutProbe`] for `doctor`. For surfaces
+//! that follow a hand in real time, [`live::LiveKeys`] sends the controls over a QMP session of
+//! their own. POSIX hosts only.
 
+pub mod live;
 pub mod workspace;
 
 use std::io::Read;
@@ -13,13 +16,14 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-use opendap_core::{HostProbe, InputSink, ScreenSource, VmBackend, VmProvider};
+use opendap_core::{HardwareBench, HostProbe, InputSink, ScreenSource, VmBackend, VmProvider};
 use opendap_host::probes::finding;
 use opendap_host::require_tool;
 use opendap_model::error as codes;
 use opendap_model::vm::DEFAULT_NAME;
 use opendap_model::{
-    Endpoints, Error, Finding, Fix, ImageInfo, InputEvent, Status, Transport, VmInfo,
+    Attachment, Endpoints, Error, Finding, Fix, HardwareChange, HardwareState, ImageInfo,
+    InputEvent, Status, Transport, VmInfo,
 };
 use serde_json::Value;
 
@@ -48,6 +52,18 @@ impl VmProvider for LocalVms {
     }
 }
 
+/// The virtual device of one checkout, whatever the workspace says: for tools that ship inside
+/// virtual-devices itself (its simulator window).
+#[derive(Debug, Clone)]
+pub struct Checkout(pub PathBuf);
+
+impl VmProvider for Checkout {
+    type Vm = VirtualDevice;
+    fn locate(&self) -> Result<VirtualDevice, Error> {
+        Ok(VirtualDevice::at(self.0.clone()))
+    }
+}
+
 /// A virtual device, run by a virtual-devices checkout.
 #[derive(Debug, Clone)]
 pub struct VirtualDevice {
@@ -59,6 +75,11 @@ impl VirtualDevice {
         Ok(VirtualDevice {
             vd_dir: workspace::vd_checkout()?,
         })
+    }
+
+    /// The device of the checkout at `vd_dir`.
+    pub fn at(vd_dir: PathBuf) -> Self {
+        VirtualDevice { vd_dir }
     }
 
     pub fn tool(&self) -> PathBuf {
@@ -134,10 +155,79 @@ impl VirtualDevice {
                     hold_ms.to_string(),
                 ]
             }
+            InputEvent::KeyDown { role } => {
+                vec![
+                    "input".into(),
+                    "key".into(),
+                    role.as_str().into(),
+                    "down".into(),
+                ]
+            }
+            InputEvent::KeyUp { role } => {
+                vec![
+                    "input".into(),
+                    "key".into(),
+                    role.as_str().into(),
+                    "up".into(),
+                ]
+            }
             InputEvent::Tap { x, y } => {
                 vec!["input".into(), "tap".into(), x.to_string(), y.to_string()]
             }
         }
+    }
+
+    fn hardware_args(change: &HardwareChange) -> Vec<String> {
+        let a: &[&str] = match *change {
+            HardwareChange::Attach { attachment } => match attachment {
+                Attachment::Microsd => &["sd", "insert"],
+                Attachment::UsbStorage => &["usb", "plug", "storage"],
+                Attachment::UsbAudio => &["usb", "plug", "audio"],
+                Attachment::Charger => &["power", "charger", "on"],
+            },
+            HardwareChange::Detach { attachment } => match attachment {
+                Attachment::Microsd => &["sd", "eject"],
+                Attachment::UsbStorage => &["usb", "unplug", "usbdisk"],
+                Attachment::UsbAudio => &["usb", "unplug", "usbaudio"],
+                Attachment::Charger => &["power", "charger", "off"],
+            },
+            HardwareChange::Battery { percent } => {
+                return vec!["power".into(), "battery".into(), percent.to_string()];
+            }
+        };
+        a.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// `odap-vdev hw --json` (`opendap.vdev-hardware/v1`) as the model has it.
+    fn parse_hardware(target: &Transport, v: &Value) -> Result<HardwareState, Error> {
+        if v["schema"] != "opendap.vdev-hardware/v1" {
+            return Err(Error::new(
+                &codes::TRANSPORT_QMP_FAILED,
+                "odap-vdev hw: not an opendap.vdev-hardware/v1 document",
+            ));
+        }
+        let usb: Vec<&str> = v["usb"]
+            .as_array()
+            .map(|a| a.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default();
+        let attached = Attachment::ALL
+            .into_iter()
+            .filter(|a| match a {
+                Attachment::Microsd => v["sd"].as_bool() == Some(true),
+                Attachment::UsbStorage => usb.contains(&"usbdisk"),
+                Attachment::UsbAudio => usb.contains(&"usbaudio"),
+                Attachment::Charger => v["charger"].as_bool() == Some(true),
+            })
+            .collect();
+        let battery = v["battery"]
+            .as_u64()
+            .and_then(|p| u8::try_from(p).ok())
+            .filter(|p| *p <= 100);
+        Ok(HardwareState {
+            target: target.clone(),
+            attached,
+            battery,
+        })
     }
 }
 
@@ -274,6 +364,25 @@ impl InputSink for VirtualDevice {
     }
 }
 
+impl HardwareBench for VirtualDevice {
+    fn describe(&self, change: &HardwareChange) -> String {
+        format!("odap-vdev {}", Self::hardware_args(change).join(" "))
+    }
+
+    fn hardware(&self, target: &Transport) -> Result<HardwareState, Error> {
+        let out = self.checked(&["hw", "--json"])?;
+        let v: Value = serde_json::from_str(&out)
+            .map_err(|e| Error::new(&codes::TRANSPORT_QMP_FAILED, format!("odap-vdev hw: {e}")))?;
+        Self::parse_hardware(target, &v)
+    }
+
+    fn apply(&self, change: &HardwareChange) -> Result<(), Error> {
+        let args = Self::hardware_args(change);
+        let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+        self.checked(&refs).map(|_| ())
+    }
+}
+
 /// `doctor` checks of the virtual device: `workspace.virtual_devices`, `auth.dev_key`, `vm.image`.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct CheckoutProbe;
@@ -397,7 +506,7 @@ mod tests {
         let tool = p.join("bin/odap-vdev");
         std::fs::write(
             &tool,
-            "#!/bin/sh\n[ \"$1 $2\" = \"status --json\" ] && echo '{\"state\":\"stopped\",\"pid\":null,\"endpoints\":{\"ssh\":\"127.0.0.1:2299\",\"vnc\":\"127.0.0.1:5999\",\"qmp\":\"/tmp/none.sock\"},\"image\":{\"path\":\"/nonexistent.raw\",\"present\":false},\"dev_key\":\"/nonexistent/key\",\"console_log\":\"/tmp/none.log\",\"qemu_log\":\"/tmp/none.log\"}'\n",
+            "#!/bin/sh\n[ \"$1 $2\" = \"status --json\" ] && echo '{\"state\":\"stopped\",\"pid\":null,\"endpoints\":{\"ssh\":\"127.0.0.1:2299\",\"vnc\":\"127.0.0.1:5999\",\"qmp\":\"/tmp/none.sock\"},\"image\":{\"path\":\"/nonexistent.raw\",\"present\":false},\"dev_key\":\"/nonexistent/key\",\"console_log\":\"/tmp/none.log\",\"qemu_log\":\"/tmp/none.log\"}'\n[ \"$1 $2\" = \"hw --json\" ] && echo '{\"schema\":\"opendap.vdev-hardware/v1\",\"sd\":true,\"usb\":[\"usbaudio\",\"other\"],\"charger\":false,\"battery\":64}'\nexit 0\n",
         )
         .unwrap();
         std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -433,6 +542,35 @@ mod tests {
         assert_eq!(
             InputSink::describe(&vm, &InputEvent::Tap { x: 1, y: 2 }),
             "odap-vdev input tap 1 2"
+        );
+    }
+
+    #[test]
+    fn passes_the_hardware_bench_contract() {
+        let (_t, vm) = checkout("hardware");
+        contract::hardware_bench(&vm);
+        let st = vm
+            .hardware(&Transport::Vm {
+                name: DEFAULT_NAME.into(),
+            })
+            .unwrap();
+        assert_eq!(st.attached, [Attachment::Microsd, Attachment::UsbAudio]);
+        assert_eq!(st.battery, Some(64));
+        let plug = HardwareChange::Attach {
+            attachment: Attachment::UsbStorage,
+        };
+        assert_eq!(
+            HardwareBench::describe(&vm, &plug),
+            "odap-vdev usb plug storage"
+        );
+        assert_eq!(
+            InputSink::describe(
+                &vm,
+                &InputEvent::KeyDown {
+                    role: Role::from("main")
+                }
+            ),
+            "odap-vdev input key main down"
         );
     }
 

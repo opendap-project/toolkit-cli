@@ -61,6 +61,61 @@ where
     }
 }
 
+/// What a device is doing as a whole, for surfaces that lock their power controls while a
+/// request is in flight: a reboot asked for lasts until the device has gone down and answers
+/// again, so it is never asked twice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Phase {
+    /// Not running.
+    #[default]
+    Off,
+    /// Running, not answering yet (booting).
+    Starting,
+    /// Answering: takes requests.
+    Ready,
+    /// A reboot was asked; `gone` once the device stopped answering.
+    Rebooting { gone: bool },
+    /// A power-off was asked.
+    Stopping,
+}
+
+impl Phase {
+    /// A request is in flight, or the device cannot take one.
+    pub fn busy(self) -> bool {
+        self != Phase::Ready
+    }
+
+    /// A person asks for `action`: true when it is to be sent (only a ready device takes one).
+    pub fn request(&mut self, action: PowerAction) -> bool {
+        if *self != Phase::Ready {
+            return false;
+        }
+        *self = match action {
+            PowerAction::Reboot { .. } => Phase::Rebooting { gone: false },
+            PowerAction::Poweroff => Phase::Stopping,
+        };
+        true
+    }
+
+    /// The device's state as last seen: whether it runs, and whether it answers.
+    pub fn observe(&mut self, running: bool, answering: bool) {
+        *self = match (*self, running, answering) {
+            (_, false, _) => Phase::Off,
+            (Phase::Rebooting { .. }, true, false) => Phase::Rebooting { gone: true },
+            (Phase::Rebooting { gone: false }, true, true) => *self,
+            (Phase::Stopping, true, _) => Phase::Stopping,
+            (_, true, true) => Phase::Ready,
+            (_, true, false) => Phase::Starting,
+        };
+    }
+
+    /// The request failed, or took longer than its surface waits: back to what is seen.
+    pub fn abandon(&mut self, running: bool, answering: bool) {
+        *self = Phase::Off;
+        self.observe(running, answering);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use opendap_model::BootMode;
@@ -123,6 +178,40 @@ mod tests {
         assert_eq!(t.ran.borrow()[0], vec!["systemctl", "poweroff"]);
         let plan = run(PowerAction::Poweroff, true, &t).unwrap();
         assert!(matches!(plan, Outcome::Plan(p) if p[0].contains("systemctl poweroff")));
+    }
+
+    #[test]
+    fn a_reboot_lasts_until_the_device_is_back() {
+        let reboot = PowerAction::Reboot {
+            mode: BootMode::Normal,
+        };
+        let mut p = Phase::Off;
+        p.observe(true, false);
+        assert_eq!(p, Phase::Starting);
+        assert!(!p.request(reboot), "not while booting");
+        p.observe(true, true);
+        assert!(p.request(reboot));
+        assert!(!p.request(reboot), "never twice");
+        assert!(!p.request(PowerAction::Poweroff));
+        p.observe(true, true);
+        assert_eq!(
+            p,
+            Phase::Rebooting { gone: false },
+            "still up: not yet gone"
+        );
+        p.observe(true, false);
+        p.observe(true, false);
+        assert_eq!(p, Phase::Rebooting { gone: true });
+        p.observe(true, true);
+        assert_eq!(p, Phase::Ready);
+        assert!(p.request(PowerAction::Poweroff));
+        p.observe(true, false);
+        assert_eq!(p, Phase::Stopping);
+        p.observe(false, false);
+        assert_eq!(p, Phase::Off);
+        p = Phase::Rebooting { gone: false };
+        p.abandon(true, true);
+        assert_eq!(p, Phase::Ready);
     }
 
     #[test]

@@ -14,11 +14,23 @@ pub fn run(ctx: &Ctx, cmd: InputCmd) -> Result<u8, CliError> {
             role: opendap_model::Role(role),
             hold_ms,
         },
+        InputEvent::KeyDown { role } => opendap_model::InputEvent::KeyDown {
+            role: opendap_model::Role(role),
+        },
+        InputEvent::KeyUp { role } => opendap_model::InputEvent::KeyUp {
+            role: opendap_model::Role(role),
+        },
         InputEvent::Tap { x, y } => opendap_model::InputEvent::Tap { x, y },
     };
     let text = match &event {
         opendap_model::InputEvent::Key { role, hold_ms } => {
             format!("pressed {} for {hold_ms} ms on {target}", role.as_str())
+        }
+        opendap_model::InputEvent::KeyDown { role } => {
+            format!("{} is down on {target}", role.as_str())
+        }
+        opendap_model::InputEvent::KeyUp { role } => {
+            format!("released {} on {target}", role.as_str())
         }
         opendap_model::InputEvent::Tap { x, y } => format!("tapped {x},{y} on {target}"),
     };
