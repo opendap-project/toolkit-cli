@@ -27,7 +27,7 @@ A first slice of the [CLI spec](docs/specs/opendap-cli.md) is implemented. It wo
 
 Every other command in the spec is not implemented yet.
 
-`input send tap` goes through the virtual device's tablet, which the shell treats as one finger.
+`input send tap` goes through the virtual device's tablet, which the composer treats as one finger.
 
 ## Build
 
