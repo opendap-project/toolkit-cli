@@ -31,11 +31,7 @@ pub fn vm_backend<B: VmBackend>(vm: &B) {
     assert_eq!(info.image.present, vm.image_present());
     assert_eq!(info.image.path, vm.image_path());
     assert_eq!(info.image.bytes.is_some(), info.image.present);
-    for cmd in [
-        vm.start_command(),
-        vm.stop_command(),
-        vm.image_build_command(),
-    ] {
+    for cmd in [vm.start_command(), vm.stop_command(), vm.image_hint()] {
         assert!(!cmd.trim().is_empty());
     }
 }

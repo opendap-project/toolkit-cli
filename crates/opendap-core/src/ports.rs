@@ -40,11 +40,11 @@ pub trait VmBackend {
     /// The disk image path, for messages.
     fn image_path(&self) -> String;
 
-    /// Whether an image build is running right now.
-    fn image_build_running(&self) -> bool;
+    /// Whether the image is being rebuilt right now (the emulator reports it).
+    fn image_building(&self) -> bool;
 
-    /// The command that builds the image, for fixes.
-    fn image_build_command(&self) -> String;
+    /// What a user can do to get an image, for hints. Never a maintainer's tool alone (rfcs 0009).
+    fn image_hint(&self) -> String;
 
     /// The command [`Self::launch`] runs, for dry-run plans.
     fn start_command(&self) -> String;

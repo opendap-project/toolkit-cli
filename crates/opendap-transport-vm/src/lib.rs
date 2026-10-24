@@ -26,24 +26,15 @@ use serde_json::Value;
 /// The program that opens SSH sessions to the virtual device, for plans.
 pub const SSH_LAUNCHER: &str = "odap-vdev";
 
-/// How to get an image when there is none: a maintainer builds one, a package developer will pull
-/// a release (`opendap image pull`, not built yet).
-pub const IMAGE_HINT: &str = "toolkit-image odap-image build qemu";
+/// How to get an image when there is none, without any toolkit (rfcs 0009). Released images, and
+/// `opendap image pull` to fetch them, are not published yet.
+pub const IMAGE_HINT: &str = "Put a Blackbird OS qemu image at ~/.local/share/opendap/images/blackbird-os-qemu.raw, or point ODAP_IMAGE at one.";
 
 /// Last lines of a log file, for error details.
 pub fn tail(path: &Path, lines: usize) -> String {
     let text = std::fs::read_to_string(path).unwrap_or_default();
     let all: Vec<&str> = text.lines().collect();
     all[all.len().saturating_sub(lines)..].join("\n")
-}
-
-/// Whether an image build is running (toolkit-image `odap-image`).
-pub fn image_build_running() -> bool {
-    Command::new("pgrep")
-        .args(["-f", "odap-image build"])
-        .stdout(Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success())
 }
 
 /// Finds the virtual-devices checkout from `$ODAP_VIRTUAL_DEVICES_DIR` or the workspace.
@@ -204,11 +195,13 @@ impl VmBackend for VirtualDevice {
         Self::status_str(&self.status(), &["image", "path"])
     }
 
-    fn image_build_running(&self) -> bool {
-        image_build_running()
+    fn image_building(&self) -> bool {
+        self.status()["image"]["building"]
+            .as_bool()
+            .unwrap_or(false)
     }
 
-    fn image_build_command(&self) -> String {
+    fn image_hint(&self) -> String {
         IMAGE_HINT.into()
     }
 
@@ -346,11 +339,10 @@ fn checkout_findings(vm: &VirtualDevice) -> Vec<Finding> {
             "auth.dev_key",
             "Development SSH key",
             Status::Error,
-            format!(
-                "{} is missing; toolkit-image odap-dev-key creates it",
-                key.display()
-            ),
-            Some(Fix::command("odap-dev-key create")),
+            format!("{} is missing", key.display()),
+            Some(Fix::describe(
+                "Point ODAP_DEV_KEY at a key the image trusts. Device pairing (opendap device pair, not built yet) will add yours to any image.",
+            )),
         ),
     });
 
@@ -363,11 +355,11 @@ fn checkout_findings(vm: &VirtualDevice) -> Vec<Finding> {
             format!("{image} ({:.1} GB)", m.len() as f64 / 1e9),
             None,
         ),
-        Err(_) if image_build_running() => finding(
+        Err(_) if st["image"]["building"].as_bool().unwrap_or(false) => finding(
             "vm.image",
             "Virtual device image",
             Status::Warn,
-            format!("{image} is missing: an image build is running"),
+            format!("{image} is missing: it is being rebuilt"),
             Some(Fix::describe(
                 "Wait for the build to finish, then run `opendap doctor` again.",
             )),
@@ -377,7 +369,7 @@ fn checkout_findings(vm: &VirtualDevice) -> Vec<Finding> {
             "Virtual device image",
             Status::Error,
             format!("{image} is missing"),
-            Some(Fix::command(IMAGE_HINT)),
+            Some(Fix::describe(IMAGE_HINT)),
         ),
     });
     out
@@ -450,7 +442,7 @@ mod tests {
         let tool = vm.tool().display().to_string();
         assert_eq!(vm.start_command(), format!("{tool} start"));
         assert_eq!(vm.stop_command(), format!("{tool} stop"));
-        assert_eq!(vm.image_build_command(), IMAGE_HINT);
+        assert_eq!(vm.image_hint(), IMAGE_HINT);
     }
 
     #[test]

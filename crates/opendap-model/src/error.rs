@@ -71,7 +71,7 @@ codes! {
         "Run `opendap vm start` (it waits for the boot to finish).");
     VM_IMAGE_MISSING = ("vm.image_missing", exit::PRECONDITION, true,
         "The virtual device's image has not been built, or is being rebuilt.",
-        "A maintainer builds it with toolkit-image `odap-image build qemu`; or wait for the running build.");
+        "Put a Blackbird OS qemu image at ~/.local/share/opendap/images/blackbird-os-qemu.raw or set ODAP_IMAGE; or wait for a rebuild to finish.");
     VM_START_FAILED = ("vm.start_failed", exit::FAILURE, true,
         "QEMU did not start.",
         "Run `odap-vdev status` for its QEMU log, and `opendap doctor`.");

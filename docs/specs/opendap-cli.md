@@ -27,7 +27,7 @@ The CLI adopts §8 of the research report as written: grammar, global flags, out
 
 ## 3. Architecture
 
-- **One binary, user-side plugins.** `opendap` is a single Rust binary. Extensions for its own audience (for example a HAT's user tools) ship as `opendap-<tool>` binaries and run as external subcommands (the cargo and git pattern). Maintainer tooling is not a plugin: it lives in the toolkit repositories as its own tools (`odap-image`, `odap-fab`…).
+- **One binary, user-side plugins.** `opendap` is a single Rust binary. Extensions for its own audience (for example a HAT's user tools) ship as `opendap-<tool>` binaries and run as external subcommands (the cargo and git pattern). Maintainer tooling is not a plugin: it lives in the toolkit repositories as its own tools (`odapkit image`, `odap-fab`…).
 - **Crates:** `opendap-model` (types and schemas), `opendap-cli-kit` (flags, output, errors, targets, config, logging, agent detection, help, schema, MCP, `doctor` framework, self-update), and one crate per binary. Use cases live in `opendap-core` and its adapter crates, layered as the [Rust crate architecture](https://github.com/opendap-project/system/blob/main/docs/specs/rust-crate-architecture.md) sets out.
 - **Transports in v0:**
   - SSH, over the network or over USB networking from the main USB-C in gadget mode.
@@ -137,11 +137,14 @@ Canonical form first, then the ADB-style shortcut where one exists.
 
 ### Maintainer tools are not CLI commands
 
-What the platform's maintainers use lives in the toolkit repositories, as tools of their own ([RFC 0008](https://github.com/opendap-project/rfcs/blob/main/text/0008-repository-restructure.md)):
+What the platform's maintainers use lives in the toolkit repositories, as tools of their own ([RFC 0008](https://github.com/opendap-project/rfcs/blob/main/text/0008-repository-restructure.md)), reached through one command, `odapkit` ([RFC 0009](https://github.com/opendap-project/rfcs/blob/main/text/0009-odapkit.md)).
+
+- **`opendap` never needs `odapkit`.** It does not call it, does not require its paths, and its hints never name a maintainer's tool as the only way out.
+- **`odapkit` may use `opendap`** for device operations it would otherwise duplicate.
 
 | Task | Tool | Repository |
 |---|---|---|
-| Build images, the sysroot, cross-build, deploy a development extension, security check | `odap-image`, `odap-sysroot`, `odap-cross`, `odap-deploy`, `odap-security-check` | toolkit-image |
+| Build images, the sysroot, cross-build, deploy a development extension, security check | `odapkit image`, `odapkit sysroot`, `odapkit cross`, `odapkit deploy`, `odapkit security-check` | toolkit-image |
 | Fab packages, mechanical exports | `fab-package.sh`, `freecad-export.py` | toolkit-hardware |
 | Verification | in progress | toolkit-verify |
 

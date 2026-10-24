@@ -93,11 +93,11 @@ pub fn start<P: VmProvider>(
     let changed = state == VmState::Stopped;
     if changed {
         if !vm.image_present() {
-            let building = vm.image_build_running();
+            let building = vm.image_building();
             let err = if building {
                 Error::new(
                     &codes::VM_IMAGE_MISSING,
-                    "the virtual device's image is being rebuilt (odap-image is running)",
+                    "the virtual device's image is being rebuilt",
                 )
                 .hint("Wait for the build to finish, then retry.")
             } else {
@@ -105,7 +105,7 @@ pub fn start<P: VmProvider>(
                     &codes::VM_IMAGE_MISSING,
                     format!("no virtual T1 image at {}", vm.image_path()),
                 )
-                .fix(vm.image_build_command())
+                .hint(vm.image_hint())
             };
             return Err(err);
         }
@@ -303,10 +303,7 @@ mod tests {
         let err = start(&p, "default", opts(false, false), &clock, &|_| {}).unwrap_err();
         assert_eq!(err.code.code, "vm.image_missing");
         assert_eq!(err.message, "no virtual T1 image at /os/image.raw");
-        assert_eq!(
-            err.fix[0].command.as_deref(),
-            Some("toolkit-image odap-image build qemu")
-        );
+        assert_eq!(err.hint.as_deref(), Some("put an image in place"));
         p.vm.building.set(true);
         let err = start(&p, "default", opts(false, false), &clock, &|_| {}).unwrap_err();
         assert_eq!(err.code.code, "vm.image_missing");

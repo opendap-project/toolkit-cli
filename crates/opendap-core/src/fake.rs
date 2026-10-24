@@ -99,11 +99,11 @@ impl VmBackend for FakeVm {
     fn image_path(&self) -> String {
         "/os/image.raw".into()
     }
-    fn image_build_running(&self) -> bool {
+    fn image_building(&self) -> bool {
         self.building.get()
     }
-    fn image_build_command(&self) -> String {
-        "toolkit-image odap-image build qemu".into()
+    fn image_hint(&self) -> String {
+        "put an image in place".into()
     }
     fn start_command(&self) -> String {
         "/vd/bin/odap-vdev start".into()
